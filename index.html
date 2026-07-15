@@ -2581,12 +2581,12 @@ function recalc() {
           if(rInstType==='m2'&&rCArea>0){
             rInstCostPP=room.installCostM2||0; rInstSalePP=sp(rInstCostPP,rInstMargin);
             rInstCost=rInstCostPP*rCArea; rInstSell=Math.round(rInstSalePP*rCArea);
-            rInstQty=rCArea; rInstUnit='m²'; rInstDesc=`Installation — ${rLabel}`;
+            rInstQty=rCArea; rInstUnit='m²'; rInstDesc=`Installation — ${rLabel}${room.productType ? ' — ' + room.productType : ''}${rGrid ? ' — ' + rGrid : ''}`;
           } else if(rInstType==='dayrate'){
             const rd=room.installDays||1;
             rInstCostPP=room.installDayRate||0; rInstSalePP=sp(rInstCostPP,rInstMargin);
             rInstCost=rInstCostPP*rd; rInstSell=Math.round(sp(rInstCost,rInstMargin));
-            rInstQty=rd; rInstUnit='days'; rInstDesc=`Installation — ${rLabel}`;
+            rInstQty=rd; rInstUnit='days'; rInstDesc=`Installation — ${rLabel}${room.productType ? ' — ' + room.productType : ''}${rGrid ? ' — ' + rGrid : ''}`;
           }
         }
         totalMatCost+=rMC;totalMatSell+=rMS;
@@ -2635,14 +2635,14 @@ function recalc() {
           rInstCost = rInstCostPP * rArea;
           rInstSell = Math.round(rInstSalePP * rArea);
           rInstQty = rArea; rInstUnit = 'm²';
-          rInstDesc = `Installation — ${rLabel}`;
+          rInstDesc = `Installation — ${rLabel}${room.productType ? ' — ' + room.productType : ''}${rLoad ? ' — ' + rLoad : ''}`;
         } else if (rInstType === 'dayrate') {
           const rDays = room.installDays || 1;
           rInstCostPP = room.installDayRate||0; rInstSalePP = sp(rInstCostPP, rInstMargin);
           rInstCost = rInstCostPP * rDays;
           rInstSell = Math.round(sp(rInstCost, rInstMargin));
           rInstQty = rDays; rInstUnit = 'days';
-          rInstDesc = `Installation — ${rLabel}`;
+          rInstDesc = `Installation — ${rLabel}${room.productType ? ' — ' + room.productType : ''}${rLoad ? ' — ' + rLoad : ''}`;
         }
       }
       extraRoomItemsList.push({label:rLabel,items:rItems,matSell:rMS,matCost:rMC,loading:rLoad,floorArea:rArea,floorHeight:rFFH,productType:room.productType,
@@ -3226,8 +3226,7 @@ async function publishAndPrint() {
       saveQuote('manual'); return;
     }
     if (_cl) {
-      var _ne = document.getElementById('specialNotes');
-      if (_ne) _ne.value = (_ne.value ? _ne.value + _cl : _cl.trimStart());
+      quoteComments.push({text: _cl.trim(), timestamp: new Date().toISOString()});
     }
   }
   // Confirm publish
@@ -3450,7 +3449,7 @@ function buildPrintQuote(r) {
       <h3>Terms &amp; Conditions</h3>
       <p style="font-size:7pt;line-height:1.7">
         <strong>Payment:</strong> ${v('paymentTerms')}<br>
-        ${v('specialNotes')?`<strong>Payment Note:</strong> ${v('specialNotes')}<br>`:''}
+        ${(()=>{var _sn=(v('specialNotes')||'').split('\n\n---')[0].trim();return _sn?`<strong>Payment Note:</strong> ${_sn}<br>`:''})()}
         <strong>Validity:</strong> ${v('validUntil')||'90 days from date of quotation'}<br>
         ${v('discountReason')?`<strong>Discount:</strong> ${v('discountReason')}<br>`:''}
         ${v('freightDoBergvik')==='No'?`<strong>Delivery:</strong> Ex-Works — Client to collect at Bergvik warehouse<br>`:''}
@@ -3469,14 +3468,7 @@ function buildPrintQuote(r) {
     </ul>
     ${v('projectClarification')?`<ul style="font-size:8pt;margin:0;padding-left:14pt;line-height:1.7;border-top:1pt solid #e2e8f0;padding-top:5pt">${v('projectClarification').split('\n').filter(l=>l.trim()).map(l=>`<li>${l.trim()}</li>`).join('')}</ul>`:''}
   </div>
-  ${quoteComments.length ? `<div style="margin-bottom:8pt;border:1pt solid #e2e8f0;border-radius:3pt;padding:8pt 10pt;background:#fffdf0">
-    <h3 style="font-size:8pt;margin:0 0 5pt;color:#1a3a5c;text-transform:uppercase;letter-spacing:.3pt">Internal Notes</h3>
-    ${quoteComments.map(function(cm){
-      var d=new Date(cm.timestamp);
-      var stamp=d.toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});
-      return '<p style="font-size:7.5pt;margin:2pt 0;color:#555"><span style="color:#999;font-size:7pt">['+stamp+']</span> '+cm.text+'</p>';
-    }).join('')}
-  </div>` : ''}
+
   <div class="pq-footer"><p>Bergvik Southern Africa (Pty) Ltd &nbsp;·&nbsp; Unit 6, Capital Hill 65, Cnr K101 &amp; Le Roux Avenue, Midrand, Johannesburg 1685</p></div>`;
   // ── DRAFT watermark (screen preview + print/PDF) ─────────────────────────────
   if (document.getElementById('_draftBanner')) {
@@ -3592,7 +3584,7 @@ function buildPrintTable(r) {
       const rdArea = rd.floorArea || rd.ceilingArea || 0;
       const rdSell = rd.matSell || 0;
       if (rdArea > 0 || rdSell > 0) {
-        rows+=matLine((rd.label||'Area') + (rd.productType ? ' — ' + rd.productType : ''), rdArea, rdSell);
+        rows+=matLine((rd.label||'Area') + (rd.productType ? ' — ' + rd.productType : '') + (rd.loading ? ' — ' + rd.loading : ''), rdArea, rdSell);
       }
     }
   } else {
