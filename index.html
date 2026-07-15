@@ -1043,6 +1043,10 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
                     <option value="DDU">DDU — Delivered Duty Unpaid</option>
                   </select>
                 </div>
+<div class="form-group">
+  <label>Arrival / Receiving Port</label>
+  <input type="text" id="freightReceivingPort" placeholder="e.g. Port of Mombasa" oninput="drecalc()">
+</div>
                 <div class="form-group full">
                   <label>Full Transport Cost (R) — provided by freight agent</label>
                   <div class="input-group"><span class="input-prefix">R</span>
@@ -2824,7 +2828,8 @@ function recalc() {
       freightCost=n('freightIntlCost') * fDeliveries;
       if (freightCost>0) {
         freightSell=Math.round(sp(freightCost,fMarg));
-        const baseDesc=`${v('freightMode')} Freight (${v('freightIncoterms')})`;
+        const _rp=(v('freightReceivingPort')||'').trim();
+const baseDesc=`${v('freightMode')} Freight (${v('freightIncoterms')})${_rp?' — '+_rp:''}`;
         const desc = fDeliveries>1 ? `${baseDesc} (×${fDeliveries} deliveries)` : baseDesc;
         freightItems.push({desc, qty:1, unit:'sum', costPP:freightCost, salePP:freightSell, totSell:freightSell, totCost:freightCost});
       }
@@ -4039,7 +4044,7 @@ const FORM_FIELD_IDS = [
   'paymentTerms','specialNotes',
   'apgReq',
   'freightDoBergvik','freightScope','freightMethod','freight3PLCost',
-  'freightKm','freightMode','freightIncoterms','freightIntlCost','freightMargin','numberOfDeliveries',
+  'freightKm','freightMode','freightIncoterms','freightIntlCost','freightReceivingPort','freightMargin','numberOfDeliveries',
   'projectClarification'
 ];
 
@@ -4166,7 +4171,7 @@ const FIELD_LABELS = {
   apgReq:'APG Required', freightDoBergvik:'Freight by Bergvik',
   freightScope:'Freight Scope', freightMethod:'Freight Method',
   freight3PLCost:'Freight 3PL Cost (R)', freightKm:'Freight Distance (km)',
-  freightMode:'Freight Mode', freightIncoterms:'Freight Incoterms',
+  freightMode:'Freight Mode', freightIncoterms:'Freight Incoterms',freightReceivingPort:'Arrival / Receiving Port',
   freightIntlCost:'Freight Intl Cost (R)', freightMargin:'Freight Margin (%)',
   numberOfDeliveries:'Number of Deliveries', projectClarification:'Project Clarification'
 };
@@ -6689,7 +6694,8 @@ function recalcAccessories() {
       if (freightCostA>0) { freightSellA=Math.round(sp(freightCostA,fMargA)); var fdbA=fMethA==='3PL'?'3rd Party Logistics':fMethA==='Internal'?'Bergvik Internal Delivery':'Subcontractor Delivery'; freightItemsA.push({desc:fDelA>1?fdbA+' (×'+fDelA+' deliveries)':fdbA,qty:1,unit:'sum',costPP:freightCostA,salePP:freightSellA,totSell:freightSellA,totCost:freightCostA}); }
     } else {
       freightCostA=n('freightIntlCost')*fDelA;
-      if (freightCostA>0) { freightSellA=Math.round(sp(freightCostA,fMargA)); var fdbA2=(v('freightMode')||'')+' Freight ('+(v('freightIncoterms')||'')+')'; freightItemsA.push({desc:fDelA>1?fdbA2+' (×'+fDelA+' deliveries)':fdbA2,qty:1,unit:'sum',costPP:freightCostA,salePP:freightSellA,totSell:freightSellA,totCost:freightCostA}); }
+      if (freightCostA>0) { freightSellA=Math.round(sp(freightCostA,fMargA)); var _rpA=(v('freightReceivingPort')||'').trim();
+var fdbA2=(v('freightMode')||'')+' Freight ('+(v('freightIncoterms')||'')+')'+(_rpA?' — '+_rpA:''); freightItemsA.push({desc:fDelA>1?fdbA2+' (×'+fDelA+' deliveries)':fdbA2,qty:1,unit:'sum',costPP:freightCostA,salePP:freightSellA,totSell:freightSellA,totCost:freightCostA}); }
     }
     var _fsdA=document.getElementById('freightSellDisplay'); if(_fsdA) _fsdA.innerHTML=freightSellA>0?'<strong>'+fmt(freightSellA)+'</strong> sell ('+fmt(freightCostA)+' cost + '+n('freightMargin')+'% margin'+(fDelA>1?', ×'+fDelA+' trips':'')+')':(freightCostA===0?'Enter cost above':'');
   }
