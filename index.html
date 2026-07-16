@@ -3272,6 +3272,8 @@ function clearForm() {
   materialOverrides = {};
   lastResult = null;
   bomEditMode = false;
+  clearBudgetBanner();
+  clearDraftBanner();
   // Re-apply defaults after select reset
   var dateEl = document.getElementById('quoteDate');
   if (dateEl) dateEl.value = new Date().toISOString().slice(0,10);
@@ -4299,6 +4301,8 @@ function loadQuoteAsRevision(entry) {
   _revisionBaseQuoteNumber = (entry.quoteNumber || '').replace(/\s*Rev\s*\d+$/i, '').trim();
   _revisionSnapshot = Object.assign({}, (entry.data && entry.data.fields) || {});
   _revisionSnapshot._extraRooms = JSON.stringify((entry.data && entry.data.extraRooms) || []);
+  clearBudgetBanner();
+  clearDraftBanner();
   applyQuoteData(entry.data);
   if (entry.grandTotal == null && lastResult && lastResult.ready && lastResult.grandTotal > 0) {
     var hist = getHistory();
@@ -4319,7 +4323,7 @@ function loadQuoteAsRevision(entry) {
 
 function loadQuoteAsViewOnly(entry) {
   _revisionMode = false; _revisionSnapshot = null;
-  clearDraftBanner(); clearRevisionBanner();
+  clearBudgetBanner(); clearDraftBanner(); clearRevisionBanner();
   applyQuoteData(entry.data);
   if (entry.grandTotal == null && lastResult && lastResult.ready && lastResult.grandTotal > 0) {
     var hist = getHistory();
