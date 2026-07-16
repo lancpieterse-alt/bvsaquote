@@ -1097,6 +1097,7 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
           <select id="histRepFilter" onchange="renderHistory()" style="padding:7px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px"><option value="">All Reps</option></select>
           <select id="histProductFilter" onchange="renderHistory()" style="padding:7px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px"><option value="">All Products</option><option>Iso Floor</option><option>Iso Compact Floor</option><option>Iso Wall</option><option>Iso Ceiling</option><option>Iso Screed</option><option>Multi Product</option><option>Other</option></select>
           <button onclick="toggleBudgetFilter()" id="histBudgetBtn" style="padding:6px 12px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:#fff8e1;color:#5c4000;cursor:pointer;font-weight:600">&#128203; Budget Quotes</button>
+      <button onclick="toggleDraftFilter()" id="histDraftBtn" style="padding:6px 12px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:#e8f5e9;color:#1b5e20;cursor:pointer;font-weight:600">&#128221; Drafts</button>
           <button onclick="renderNeverConvertedReport()" style="padding:6px 12px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:#fdf2f2;color:#c0392b;cursor:pointer;font-weight:600">&#9888; Never Converted</button>
           <button onclick="clearHistFilters()" style="padding:6px 12px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:#eee;cursor:pointer">✕ Clear</button>
         </div>
@@ -4563,21 +4564,38 @@ function repairNullGrandTotals() {
 }
 
 var _histBudgetView = false;
+var _histDraftView  = false;
 
 function clearHistFilters() {
   ['histSearch','histRepFilter','histProductFilter'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
   _histBudgetView = false;
+  _histDraftView  = false;
   var btn = document.getElementById('histBudgetBtn');
   if (btn) btn.style.background = '#fff8e1';
+  var dbtn = document.getElementById('histDraftBtn');
+  if (dbtn) dbtn.style.background = '#e8f5e9';
   renderHistory();
 }
 
 function toggleBudgetFilter() {
   _histBudgetView = !_histBudgetView;
+  if (_histBudgetView) _histDraftView = false;
   var btn = document.getElementById('histBudgetBtn');
   if (btn) btn.style.background = _histBudgetView ? '#ffc107' : '#fff8e1';
+  var dbtn = document.getElementById('histDraftBtn');
+  if (dbtn) dbtn.style.background = '#e8f5e9';
+  renderHistory();
+}
+
+function toggleDraftFilter() {
+  _histDraftView = !_histDraftView;
+  if (_histDraftView) _histBudgetView = false;
+  var btn = document.getElementById('histDraftBtn');
+  if (btn) btn.style.background = _histDraftView ? '#81c784' : '#e8f5e9';
+  var bbtn = document.getElementById('histBudgetBtn');
+  if (bbtn) bbtn.style.background = '#fff8e1';
   renderHistory();
 }
 
@@ -4597,9 +4615,10 @@ function renderHistory() {
   var q = ((document.getElementById('histSearch')||{}).value||'').toLowerCase();
   var repF = (document.getElementById('histRepFilter')||{}).value||'';
   var prodF = (document.getElementById('histProductFilter')||{}).value||'';
-  if (q || repF || prodF || _histBudgetView) {
+  if (q || repF || prodF || _histBudgetView || _histDraftView) {
     history = history.filter(function(h) {
       if (_histBudgetView && h.status !== 'budget') return false;
+      if (_histDraftView  && h.status !== 'draft')  return false;
       if (q && ![h.quoteNumber, h.clientName, h.projectName].some(function(f){ return (f||'').toLowerCase().includes(q); })) return false;
       if (repF) { var r = (h.data&&h.data.fields&&h.data.fields.salesRep)||''; if (r !== repF) return false; }
       if (prodF) { var p = (h.data&&h.data.fields&&h.data.fields.productType)||''; if (!p.toLowerCase().includes(prodF.toLowerCase())) return false; }
