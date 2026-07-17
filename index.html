@@ -340,6 +340,38 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
         </div>
         <input type="hidden" id="quoteType" value="New Quote">
 
+        <!-- ── Currency (first decision) ── -->
+        <div style="margin-bottom:16px;padding:12px 14px;background:var(--light);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Quote Currency</div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="margin-bottom:4px">Currency</label>
+            <select id="quoteCurrency" onchange="onCurrencyChange()" style="font-size:13px;font-weight:600">
+              <option value="ZAR">ZAR — South African Rand</option>
+              <option value="USD">USD — US Dollar</option>
+              <option value="EUR">EUR — Euro</option>
+              <option value="GBP">GBP — British Pound</option>
+              <option value="SEK">SEK — Swedish Krona</option>
+            </select>
+          </div>
+          <div id="fxRateGroup" style="display:none;margin-top:10px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0">
+                <label>Rand per 1 <span id="fxCurrLabel">USD</span></label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input type="number" id="forexRate" value="" min="0" step="0.01" placeholder="e.g. 18.50" style="flex:1" oninput="onForexRateInput()">
+                  <button class="btn-sm" onclick="fetchAndSetForexRate()" style="white-space:nowrap">&#8635; Live Rate</button>
+                </div>
+              </div>
+              <div class="form-group" style="flex:0 0 150px;margin-bottom:0">
+                <label>Rate Date</label>
+                <input type="date" id="forexRateDate" oninput="drecalc()">
+              </div>
+            </div>
+            <div id="fxGuardWarn" style="display:none;color:#b45309;font-size:11px;margin-top:6px;font-weight:600">&#9888; Enter exchange rate to enable foreign currency pricing</div>
+            <small id="fxRateNote" style="color:var(--muted);margin-top:4px;display:block"></small>
+          </div>
+        </div>
+
         <div class="form-grid">
           <div class="section-title">Bergvik Details</div>
           <div class="form-group">
@@ -623,26 +655,7 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
             <label>Discount Reason</label>
             <input type="text" id="discountReason" placeholder="Reason for discount (if any)" oninput="drecalc()">
           </div>
-          <div class="form-group">
-            <label>Quote Currency</label>
-            <select id="quoteCurrency" onchange="onCurrencyChange()">
-              <option value="ZAR">ZAR — South African Rand</option>
-              <option value="USD">USD — US Dollar</option>
-              <option value="GBP">GBP — British Pound</option>
-              <option value="AUD">AUD — Australian Dollar</option>
-              <option value="SEK">SEK — Swedish Krona</option>
-              <option value="BWP">BWP — Botswana Pula</option>
-              <option value="EUR">EUR — Euro</option>
-            </select>
-          </div>
-          <div class="form-group" id="fxRateGroup" style="display:none">
-            <label>Exchange Rate <small style="color:var(--muted)">(1 <span id="fxCurrLabel">USD</span> = R ?)</small></label>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="number" id="forexRate" value="" min="0" step="0.000001" placeholder="Auto-fetch or enter manually" style="flex:1" oninput="drecalc()">
-              <button class="btn-sm" onclick="fetchAndSetForexRate()" style="white-space:nowrap">↻ Live Rate</button>
-            </div>
-            <small id="fxRateNote" style="color:var(--muted);margin-top:2px;display:block"></small>
-          </div>
+
           <div class="form-group" id="vatTreatmentGroup" style="display:none">
             <label>VAT on Quote</label>
             <select id="vatTreatment" onchange="drecalc()">
@@ -2931,24 +2944,24 @@ const baseDesc=`${v('freightMode')} Freight (${v('freightIncoterms')})${_rp?' �
   const overallMargin=grandTotal>0 ? (grandTotal-totalCostAll)/grandTotal : 0;
 
   // ── SUMMARY ───────────────────────────────────────────────────────────────
-  document.getElementById('sumMatCost').textContent        = fmt(totalMatCost);
-  document.getElementById('sumMatSell').textContent        = fmt(totalMatSell);
+  document.getElementById('sumMatCost').innerHTML         = _fxSumHTML(totalMatCost);
+  document.getElementById('sumMatSell').innerHTML         = _fxSumHTML(totalMatSell);
   document.getElementById('sumMatMarginBadge').textContent = n('materialMargin').toFixed(1)+'%';
-  document.getElementById('sumInstall').textContent        = fmt(installSell);
-  document.getElementById('sumHSE').textContent            = fmt(hseSell);
-  document.getElementById('sumTransport').textContent      = fmt(transportSell);
-  document.getElementById('sumLiving').textContent         = fmt(livingSell);
-  document.getElementById('sumFreight').textContent        = fmt(freightSell);
-  document.getElementById('sumAdditional').textContent     = fmt(additionalSell);
-  document.getElementById('sumAPG').textContent            = fmt(apgSell);
+  document.getElementById('sumInstall').innerHTML         = _fxSumHTML(installSell);
+  document.getElementById('sumHSE').innerHTML             = _fxSumHTML(hseSell);
+  document.getElementById('sumTransport').innerHTML       = _fxSumHTML(transportSell);
+  document.getElementById('sumLiving').innerHTML          = _fxSumHTML(livingSell);
+  document.getElementById('sumFreight').innerHTML         = _fxSumHTML(freightSell);
+  document.getElementById('sumAdditional').innerHTML      = _fxSumHTML(additionalSell);
+  document.getElementById('sumAPG').innerHTML             = _fxSumHTML(apgSell);
   const grossProfit = grandTotal - totalCostAll;
-  document.getElementById('sumTotal').textContent          = fmt(grandTotal);
-  document.getElementById('sumRate').textContent           = totalArea>0 ? fmt(ratePerM2)+'/m²' : '—';
-  document.getElementById('sumCOS').textContent            = fmt(totalCostAll);
-  document.getElementById('sumProfit').textContent         = fmt(grossProfit);
-  document.getElementById('sumProfit').style.color         = grossProfit >= 0 ? '#1a7a3a' : '#dc2626';
-  document.getElementById('sumMargin').textContent         = grandTotal>0 ? pct(overallMargin) : '—';
-  document.getElementById('sumMargin').style.color         = overallMargin >= 0 ? '#1a7a3a' : '#dc2626';
+  document.getElementById('sumTotal').innerHTML           = _fxSumHTML(grandTotal);
+  document.getElementById('sumRate').textContent          = totalArea>0 ? fmt(ratePerM2)+'/m²' : '—';
+  document.getElementById('sumCOS').innerHTML             = _fxSumHTML(totalCostAll);
+  document.getElementById('sumProfit').innerHTML          = _fxSumHTML(grossProfit);
+  document.getElementById('sumProfit').style.color        = grossProfit >= 0 ? '#1a7a3a' : '#dc2626';
+  document.getElementById('sumMargin').textContent        = grandTotal>0 ? pct(overallMargin) : '—';
+  document.getElementById('sumMargin').style.color        = overallMargin >= 0 ? '#1a7a3a' : '#dc2626';
   document.getElementById('rateAlert').classList.toggle('show', ratePerM2>2600 && totalArea>0);
   const _gridLabel = _isCompact ? ({'10kN':'600×1200mm','15kN':'600×1000mm','20kN':'600×800mm'}[loading]||'') : '';
   if (_isMultipleMode) {
@@ -3096,7 +3109,7 @@ function renderBOM(items, installItems, hseItems, transportItems, livingItems, f
   const _fcur=v('quoteCurrency')||'ZAR'; const _frate=parseFloat(v('forexRate'))||0;
   if (_fcur!=='ZAR' && _frate>0) {
     const _fsym=FX_SYMBOLS[_fcur]||(_fcur+' ');
-    html+=`<tr class="subtotal"><td colspan="6" style="font-size:13px;color:#1a3a5c">TOTAL (excl. VAT) — ${_fcur}</td><td style="text-align:right;font-size:13px;color:#1a3a5c;font-weight:700">${_fsym}${Math.round(total/_frate).toLocaleString('en-ZA')}</td></tr>`;
+    html+=`<tr class="subtotal"><td colspan="6" style="font-size:13px;color:#1a3a5c">TOTAL (excl. VAT) — ${_fcur}</td><td style="text-align:right;font-size:13px;color:#1a3a5c;font-weight:700">${_fsym}${Number((total/_frate).toFixed(2)).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr>`;
     html+=`<tr><td colspan="7" style="font-size:10px;color:#888;padding:2px 8px">Rate: 1 ${_fcur} = R${Number(_frate).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:4})}</td></tr>`;
   }
   tbody.innerHTML=html;
@@ -3353,6 +3366,7 @@ function clearForm() {
   // Re-trigger product type UI
   if (typeof onProductTypeChange === 'function') onProductTypeChange();
   if (typeof onInstallChange === 'function') onInstallChange();
+  if (typeof onCurrencyChange === 'function') onCurrencyChange();
   recalc();
   // Switch to first tab
   var firstTab = document.querySelector('.tab');
@@ -3379,7 +3393,7 @@ function buildPrintQuote(r) {
   // FX currency setup (used by this fn + buildPrintTable, buildAreaSummaryTable, buildAccessoriesPrintTable)
   var _bpqCur=v('quoteCurrency')||'ZAR', _bpqRate=parseFloat(v('forexRate'))||0;
   var _bpqIsFx=_bpqCur!=='ZAR'&&_bpqRate>0, _bpqSym=_bpqIsFx?(FX_SYMBOLS[_bpqCur]||(_bpqCur+' ')):null;
-  window._pqFmt=(zar)=>_bpqSym?(_bpqSym+Math.round(zar/_bpqRate).toLocaleString('en-ZA')):fmt(zar);
+  window._pqFmt=(zar)=>_bpqSym?(_bpqSym+Number((zar/_bpqRate).toFixed(2)).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})):fmt(zar);
   window._pqIsFx=_bpqIsFx; window._pqCur=_bpqCur; window._pqRate=_bpqRate;
   const rep=v('salesRep'), repInfo=REPS[rep]||{};
   const today=v('quoteDate')||new Date().toISOString().slice(0,10);
@@ -3538,6 +3552,15 @@ function buildPrintQuote(r) {
       }).filter(Boolean);
       const custItems = (typeof customClarifications !== 'undefined') ? customClarifications.filter(function(c){return c&&(c.text||c);}).map(function(c){return c.text||c;}) : [];
       const allItems = stdItems.concat(custItems);
+      if (window._pqIsFx) {
+        var _fxRdRaw = v('forexRateDate');
+        var _fxRdStr = 'today';
+        if (_fxRdRaw) {
+          var _fxRdDate = new Date(_fxRdRaw + 'T00:00:00');
+          _fxRdStr = _fxRdDate.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+        }
+        allItems.push('All prices in ' + window._pqCur + '. Exchange rate: 1 ' + window._pqCur + ' = R ' + Number(window._pqRate).toFixed(4) + ' (as at ' + _fxRdStr + ').');
+      }
       const pc = v('projectClarification');
       const hasNotes = !!pc;
       let out = '';
@@ -4109,7 +4132,7 @@ const FORM_FIELD_IDS = [
   'roomType','productType','loading','pointLoadCustom','floorHeight','floorArea',
   'skirtingIncluded','stepsRamp','stepsRisers','stepsWidth','rampArea',
   'ceilingArea','ceilingGrid','ceilingVoid','nonZincBolts','panelsRequired',
-  'materialMargin','materialContingency','discount','discountReason','quoteCurrency','forexRate','vatTreatment',
+  'materialMargin','materialContingency','discount','discountReason','quoteCurrency','forexRate','forexRateDate','vatTreatment',
   'bergvikInstalls','installCostPerM2','installMargin','installDayRate','installDays',
   'hseReq','hseCost','hseMargin','inductionRequired','inductionDays','inductionCost',
   'travelMode','deployments','teamSize',
@@ -6840,23 +6863,23 @@ var fdbA2=(v('freightMode')||'')+' Freight ('+(v('freightIncoterms')||'')+')'+(_
   var grand = addSell + freightSellA + hseSellA;
 
   // ── Summary panel ──────────────────────────────────────────────────────────
-  var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
+  var set = function(id, val) { var el = document.getElementById(id); if (el) el.innerHTML = val; };
 
-  set('sumMatCost',         fmt(0));
-  set('sumMatSell',         fmt(0));
+  set('sumMatCost',         _fxSumHTML(0));
+  set('sumMatSell',         _fxSumHTML(0));
   set('sumMatMarginBadge',  '—');
-  set('sumInstall',         fmt(0));
-  set('sumHSE',             fmt(hseSellA));
-  set('sumTransport',       fmt(0));
-  set('sumLiving',          fmt(0));
-  set('sumFreight',         fmt(freightSellA));
-  set('sumAdditional',      fmt(addSell));
-  set('sumAPG',             fmt(0));
-  set('sumTotal',           fmt(grand));
+  set('sumInstall',         _fxSumHTML(0));
+  set('sumHSE',             _fxSumHTML(hseSellA));
+  set('sumTransport',       _fxSumHTML(0));
+  set('sumLiving',          _fxSumHTML(0));
+  set('sumFreight',         _fxSumHTML(freightSellA));
+  set('sumAdditional',      _fxSumHTML(addSell));
+  set('sumAPG',             _fxSumHTML(0));
+  set('sumTotal',           _fxSumHTML(grand));
   set('sumRate',            '—');
-  set('sumCOS',             fmt(addCost + freightCostA + hseCostAmtA));
+  set('sumCOS',             _fxSumHTML(addCost + freightCostA + hseCostAmtA));
   var accProfit = grand - (addCost + freightCostA);
-  set('sumProfit',          fmt(accProfit));
+  set('sumProfit',          _fxSumHTML(accProfit));
   var profEl = document.getElementById('sumProfit'); if (profEl) profEl.style.color = accProfit >= 0 ? '#1a7a3a' : '#dc2626';
   set('sumMargin',          '—');
 
@@ -7153,24 +7176,24 @@ function recalcCeiling(isXL) {
   var ovMargin   = grandTotal > 0 ? (grandTotal - totalCostAll) / grandTotal * 100 : 0;
 
   // ── SUMMARY PANEL ─────────────────────────────────────────────────────────
-  document.getElementById('sumMatCost').textContent        = fmt(totalMatCost);
-  document.getElementById('sumMatSell').textContent        = fmt(totalMatSell);
+  document.getElementById('sumMatCost').innerHTML         = _fxSumHTML(totalMatCost);
+  document.getElementById('sumMatSell').innerHTML         = _fxSumHTML(totalMatSell);
   document.getElementById('sumMatMarginBadge').textContent = n('materialMargin').toFixed(1)+'%';
-  document.getElementById('sumInstall').textContent        = fmt(installSell);
-  document.getElementById('sumHSE').textContent            = fmt(hseSell);
-  document.getElementById('sumTransport').textContent      = fmt(transportSell);
-  document.getElementById('sumLiving').textContent         = fmt(livingSell);
-  document.getElementById('sumFreight').textContent        = fmt(freightSell);
-  document.getElementById('sumAdditional').textContent     = fmt(addSell);
-  document.getElementById('sumAPG').textContent            = fmt(0);
+  document.getElementById('sumInstall').innerHTML         = _fxSumHTML(installSell);
+  document.getElementById('sumHSE').innerHTML             = _fxSumHTML(hseSell);
+  document.getElementById('sumTransport').innerHTML       = _fxSumHTML(transportSell);
+  document.getElementById('sumLiving').innerHTML          = _fxSumHTML(livingSell);
+  document.getElementById('sumFreight').innerHTML         = _fxSumHTML(freightSell);
+  document.getElementById('sumAdditional').innerHTML      = _fxSumHTML(addSell);
+  document.getElementById('sumAPG').innerHTML             = _fxSumHTML(0);
   var ceilProfit = grandTotal - totalCostAll;
-  document.getElementById('sumTotal').textContent          = fmt(grandTotal);
-  document.getElementById('sumRate').textContent           = (area > 0 && ready) ? 'R '+Math.round(ratePerM2).toLocaleString('en-ZA')+' /m²' : '—';
-  document.getElementById('sumCOS').textContent            = fmt(totalCostAll);
-  document.getElementById('sumProfit').textContent         = fmt(ceilProfit);
-  document.getElementById('sumProfit').style.color         = ceilProfit >= 0 ? '#1a7a3a' : '#dc2626';
-  document.getElementById('sumMargin').textContent         = ready ? ovMargin.toFixed(1)+'%' : '—';
-  document.getElementById('sumMargin').style.color         = ovMargin >= 0 ? '#1a7a3a' : '#dc2626';
+  document.getElementById('sumTotal').innerHTML           = _fxSumHTML(grandTotal);
+  document.getElementById('sumRate').textContent          = (area > 0 && ready) ? 'R '+Math.round(ratePerM2).toLocaleString('en-ZA')+' /m²' : '—';
+  document.getElementById('sumCOS').innerHTML             = _fxSumHTML(totalCostAll);
+  document.getElementById('sumProfit').innerHTML          = _fxSumHTML(ceilProfit);
+  document.getElementById('sumProfit').style.color        = ceilProfit >= 0 ? '#1a7a3a' : '#dc2626';
+  document.getElementById('sumMargin').textContent        = ready ? ovMargin.toFixed(1)+'%' : '—';
+  document.getElementById('sumMargin').style.color        = ovMargin >= 0 ? '#1a7a3a' : '#dc2626';
   var _rA = document.getElementById('rateAlert'); if (_rA) _rA.style.display = 'none';
 
   // ── RENDER BOM ────────────────────────────────────────────────────────────
@@ -7316,8 +7339,14 @@ async function submitExternalLog() {
 }
 
 // ── Currency / Forex ──────────────────────────────────────────────────────────
-const FX_SYMBOLS = {USD:'$', GBP:'£', AUD:'A$', SEK:'kr ', BWP:'P ', EUR:'€'};
-const FX_NAMES   = {USD:'US Dollar', GBP:'British Pound', AUD:'Australian Dollar', SEK:'Swedish Krona', BWP:'Botswana Pula', EUR:'Euro'};
+const FX_SYMBOLS = {USD:'$', GBP:'£', SEK:'kr ', EUR:'€'};
+const FX_NAMES   = {USD:'US Dollar', GBP:'British Pound', SEK:'Swedish Krona', EUR:'Euro'};
+function _fxSumHTML(zar) {
+  var _fxc=v('quoteCurrency')||'ZAR', _fxr=parseFloat(v('forexRate'))||0;
+  if (_fxc==='ZAR'||!_fxr) return fmt(zar);
+  var _fxs=FX_SYMBOLS[_fxc]||(_fxc+' ');
+  return _fxs+Number((zar/_fxr).toFixed(2)).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})+'<br><small style="color:#888;font-size:10px;font-weight:400">('+fmt(zar)+')</small>';
+}
 
 function onCurrencyChange() {
   var cur = v('quoteCurrency');
@@ -7327,12 +7356,22 @@ function onCurrencyChange() {
     if (grp) grp.style.display = '';
     if (vatGrp) vatGrp.style.display = '';
     var lbl = document.getElementById('fxCurrLabel'); if (lbl) lbl.textContent = cur;
+    var rdEl = document.getElementById('forexRateDate');
+    if (rdEl && !rdEl.value) rdEl.value = new Date().toISOString().slice(0,10);
     var rateInp = document.getElementById('forexRate');
     if (rateInp && !rateInp.value) fetchAndSetForexRate();
   } else {
     if (grp) grp.style.display = 'none';
     if (vatGrp) vatGrp.style.display = 'none';
   }
+  onForexRateInput();
+}
+
+function onForexRateInput() {
+  var rate = parseFloat((document.getElementById('forexRate')||{}).value) || 0;
+  var cur = v('quoteCurrency')||'ZAR';
+  var warn = document.getElementById('fxGuardWarn');
+  if (warn) warn.style.display = (cur !== 'ZAR' && !rate) ? '' : 'none';
   drecalc();
 }
 
@@ -7347,6 +7386,7 @@ async function fetchAndSetForexRate() {
     var rate = data && data.rates && data.rates[cur];
     if (rate) {
       document.getElementById('forexRate').value = (1/rate).toFixed(4);
+      var rdEl2 = document.getElementById('forexRateDate'); if (rdEl2 && !rdEl2.value) rdEl2.value = new Date().toISOString().slice(0,10);
       var today = new Date().toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'});
       if (note) note.textContent = 'Rate as at ' + today + ' (open.er-api.com)';
       drecalc();
