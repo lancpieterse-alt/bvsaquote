@@ -3559,7 +3559,7 @@ function buildPrintQuote(r) {
           var _fxRdDate = new Date(_fxRdRaw + 'T00:00:00');
           _fxRdStr = _fxRdDate.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
         }
-        allItems.push('All prices in ' + window._pqCur + '. Exchange rate: 1 ' + window._pqCur + ' = R ' + Number(window._pqRate).toFixed(4) + ' (as at ' + _fxRdStr + ').');
+        allItems.push('All prices in ' + window._pqCur + '. Exchange rate: 1 ' + window._pqCur + ' = R ' + Number(window._pqRate).toFixed(2) + ' (as at ' + _fxRdStr + ').');
       }
       const pc = v('projectClarification');
       const hasNotes = !!pc;
