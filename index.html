@@ -3596,7 +3596,7 @@ function buildAccessoriesPrintTable(r) {
     .map(it=>{ const _roAcc=(it.unit||'sum')==='Rate Only'; return `<tr>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0">${it.desc||'—'}</td>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${it.qty||1}</td>
-      <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0">${it.unit||'sum'}</td>
+      <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:center">${it.unit||'sum'}</td>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${it.salePP>0?fmtN(it.salePP):''}</td>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${_roAcc?'&mdash;':fmtN(it.totSell)}</td>
     </tr>`; }).join('');
@@ -3605,7 +3605,7 @@ function buildAccessoriesPrintTable(r) {
     <thead><tr>
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:left">Description</th>
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:right">Qty</th>
-      <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:left">Unit</th>
+      <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:center">Unit</th>
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:right">Rate</th>
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:right">Amount (${window._pqIsFx?window._pqCur:'R'})</th>
     </tr></thead>
@@ -3667,7 +3667,7 @@ function buildPrintTable(r) {
   const tr=(desc,qty,unit,rate,total)=>
     `<tr><td>${desc}</td>
      <td style="text-align:right">${qty>0?Number(qty).toLocaleString('en-ZA'):''}</td>
-     <td>${unit}</td>
+     <td style="text-align:center">${unit}</td>
      <td style="text-align:right">${rate>0?window._pqFmt(rate):''}</td>
      <td style="text-align:right">${total!==0?(total<0?'('+window._pqFmt(Math.abs(total))+')':window._pqFmt(total)):''}</td></tr>`;
   const sec=l=>`<tr class="sec-hdr"><td colspan="5">${l}</td></tr>`;
