@@ -933,17 +933,6 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
           </div>
         </div>
 
-        <!-- Project Clarification -->
-        <div class="subsection">
-          <div class="subsection-title" style="display:flex;align-items:center">Project Clarification <button type="button" class="btn-clear-section" onclick="clearProjectClarification()">× Clear</button></div>
-          <div class="form-grid">
-            <div class="form-group full">
-              <label>Clarifications, Assumptions &amp; Exclusions</label>
-              <textarea id="projectClarification" rows="4" placeholder="Add any uncertainties, assumptions, inclusions or exclusions that apply to this quote..." oninput="drecalc()"></textarea>
-            </div>
-          </div>
-        </div>
-
       </div><!-- end tab-costs -->
 
       <!-- ══ TAB 4: GOODS TRANSPORT ══ -->
@@ -1085,6 +1074,22 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div style="font-size:11px;color:var(--muted)">This document updates automatically as you change the quote parameters.</div>
           <button class="btn btn-primary" onclick="printTC()" style="font-size:12px;padding:8px 16px">🖨 Print T&amp;C</button>
+        </div>
+        <div class="subsection" style="margin-bottom:16px">
+          <div class="subsection-title" style="display:flex;align-items:center">Project Clarification <button type="button" class="btn-clear-section" onclick="clearAllClarifications()">× Clear All</button></div>
+          <div id="clauseChecksContainer" style="margin-bottom:8px"></div>
+          <div style="margin-top:10px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3pt">Custom Clarifications</div>
+            <div id="customClarificationsContainer" style="margin-bottom:6px"></div>
+            <div style="display:flex;gap:6px">
+              <input type="text" id="customClarificationInput" placeholder="Add a custom clarification..." style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomClarification();}">
+              <button class="btn-sm btn-add" onclick="addCustomClarification()">+ Add</button>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3pt">Additional Notes</label>
+            <textarea id="projectClarification" rows="3" placeholder="Add any uncertainties, assumptions, inclusions or exclusions that apply to this quote..." oninput="drecalc()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:5px;font-size:12px;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+          </div>
         </div>
         <div id="tcBody" style="background:white;border:1px solid var(--border);border-radius:6px;padding:30px 36px;font-size:12px;line-height:1.7;color:#1a1a2e;font-family:Georgia,serif;max-width:900px;margin:0 auto"></div>
       </div><!-- end tab-tc -->
@@ -1630,6 +1635,17 @@ const PN = {
 // ─── ADDITIONAL ITEMS ─────────────────────────────────────────────────────────
 let additionalItems = [];
 let hseExtraItems = []; // [{desc, costPP, margin}]
+
+// ─── PROJECT CLARIFICATION ────────────────────────────────────────────────────
+const STANDARD_CLAUSES = [
+  "Client to supply adequate storage, lighting and power on site. If there isn’t it is the clients responsibility to notify Bergvik so that alternative solutions can be allowed for.",
+  "Quote allows for a standard OHS Act (85 of 1993) Safety file as well as standard inductions, special PPE and/or other client requirements will be charged for separately in the quote table.",
+  "Induction – Bergvik allows 3hrs for onsite induction unless otherwise allowed and priced for. If more time is required, the expenses will be for the client’s account and will be charged on the standard rates as set out in clause L of the T&C’s below.",
+  "All prices are in South African Rand (ZAR) and exclude VAT unless stated otherwise in the quote table.",
+  "Bergvik Southern Africa (Pty) Ltd reserves the right to amend this quotation should project specifications or scope change."
+];
+let _clauseChecks = [true, true, true, true, true];
+let customClarifications = []; // [{text:''}]
 let extraRooms = []; // [{productType,loading,pointLoad,pointLoadCustom,floorHeight,floorArea,skirtingIncluded,stepsRamp,stepsRisers,stepsWidth,rampArea}]
 let quoteComments = []; // [{text, timestamp, isLink}]
 
@@ -2013,6 +2029,47 @@ function clearInstallerTransport(){sv('travelMode','');onTravelModeChange();sv('
 function clearPaymentTerms(){sv('paymentTerms','Upfront payment');var e=document.getElementById('specialNotes');if(e)e.value='';recalc();}
 function clearAPG(){sv('apgReq','No');onApgChange();recalc();}
 function clearProjectClarification(){var e=document.getElementById('projectClarification');if(e)e.value='';}
+
+function renderClauseChecks() {
+  var cont = document.getElementById('clauseChecksContainer');
+  if (!cont) return;
+  cont.innerHTML = STANDARD_CLAUSES.map(function(txt,i) {
+    return '<label style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #f0f4f8;cursor:pointer"><input type="checkbox"' + (_clauseChecks[i]?' checked':'') + ' onchange="_clauseChecks['+i+']=this.checked;drecalc()" style="margin-top:3px;flex-shrink:0;width:14px;height:14px"><span style="font-size:12px;line-height:1.5;color:#333">'+txt+'</span></label>';
+  }).join('');
+}
+
+function renderCustomClarifications() {
+  var cont = document.getElementById('customClarificationsContainer');
+  if (!cont) return;
+  if (!customClarifications.length) { cont.innerHTML = ''; return; }
+  cont.innerHTML = customClarifications.map(function(c,i) {
+    return '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;background:#f8fafc;border-radius:4px;padding:6px 8px"><span style="font-size:12px;color:#333;flex:1;line-height:1.4">'+c.text+'</span><button onclick="removeCustomClarification('+i+')" style="border:none;background:none;color:#e53e3e;cursor:pointer;font-size:16px;padding:0;line-height:1;flex-shrink:0">×</button></div>';
+  }).join('');
+}
+
+function addCustomClarification() {
+  var inp = document.getElementById('customClarificationInput');
+  if (!inp || !inp.value.trim()) return;
+  customClarifications.push({text: inp.value.trim()});
+  inp.value = '';
+  renderCustomClarifications();
+  drecalc();
+}
+
+function removeCustomClarification(idx) {
+  customClarifications.splice(idx, 1);
+  renderCustomClarifications();
+  drecalc();
+}
+
+function clearAllClarifications() {
+  _clauseChecks = [true, true, true, true, true];
+  customClarifications = [];
+  renderClauseChecks();
+  renderCustomClarifications();
+  var e = document.getElementById('projectClarification'); if(e) e.value='';
+  drecalc();
+}
 function clearGoodsFreight(){sv('freightDoBergvik','No');onFreightChange();}
 function clearFreightDetails(){sv('freightScope','Local');if(typeof onFreightScopeChange==='function')onFreightScopeChange();sv('numberOfDeliveries','1');sv('freightMethod','3PL');onFreightMethodChange();sv('freight3PLCost','');sv('freight3PLMargin','15');sv('freightKm','0');sv('freightKmMargin','15');}
 
@@ -3263,6 +3320,10 @@ function clearForm() {
   hseExtraItems.length = 0;
   renderHSEItems();
   renderAdditionalItems();
+  _clauseChecks = [true, true, true, true, true];
+  customClarifications = [];
+  renderClauseChecks();
+  renderCustomClarifications();
   quoteComments = [];
   renderComments();
   extraRooms = [];
@@ -3467,14 +3528,22 @@ function buildPrintQuote(r) {
   </div>
   <div style="margin-bottom:8pt;border:1pt solid #e2e8f0;border-left:3pt solid #4a90d9;border-radius:3pt;padding:8pt 10pt;background:#f8f9fb">
     <h3 style="font-size:8pt;margin:0 0 5pt;color:#1a3a5c;text-transform:uppercase;letter-spacing:.3pt">Project Clarification</h3>
-    <ul style="font-size:8pt;margin:0 0 ${v('projectClarification')?'6':'0'}pt;padding-left:14pt;line-height:1.7">
-      <li>Client to supply adequate storage, lighting and power on site.</li>
-      <li>Quote allows for a standard OHS Act (85 of 1993) Safety file as well as specified inductions, special PPE and/or other client requirements.</li>
-      <li>${window._pqIsFx?`All prices are quoted in ${window._pqCur} and exclude VAT unless stated otherwise.`:"All prices are in South African Rand (ZAR) and exclude VAT unless stated otherwise."}</li>
-      <li>Bergvik Southern Africa (Pty) Ltd reserves the right to amend this quotation should project specifications change.</li>
-      <li>Induction – Bergvik allows 3hrs for onsite induction unless otherwise allowed and priced for. If more time is required than the 3hrs, such expenses will be covered by client.</li>
-    </ul>
-    ${v('projectClarification')?`<ul style="font-size:8pt;margin:0;padding-left:14pt;line-height:1.7;border-top:1pt solid #e2e8f0;padding-top:5pt">${v('projectClarification').split('\n').filter(l=>l.trim()).map(l=>`<li>${l.trim()}</li>`).join('')}</ul>`:''}
+    ${(()=>{
+      const checks = (typeof _clauseChecks !== 'undefined') ? _clauseChecks : [true,true,true,true,true];
+      const stdItems = STANDARD_CLAUSES.map(function(t,i){
+        if (!checks[i]) return null;
+        if (i===3 && window._pqIsFx) return 'All prices are quoted in '+window._pqCur+' and exclude VAT unless stated otherwise in the quote table.';
+        return t;
+      }).filter(Boolean);
+      const custItems = (typeof customClarifications !== 'undefined') ? customClarifications.filter(function(c){return c&&(c.text||c);}).map(function(c){return c.text||c;}) : [];
+      const allItems = stdItems.concat(custItems);
+      const pc = v('projectClarification');
+      const hasNotes = !!pc;
+      let out = '';
+      if (allItems.length) out += '<ul style="font-size:8pt;margin:0 0 '+(hasNotes?'6':'0')+'pt;padding-left:14pt;line-height:1.7">'+allItems.map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>';
+      if (hasNotes) out += '<ul style="font-size:8pt;margin:0;padding-left:14pt;line-height:1.7'+(allItems.length?';border-top:1pt solid #e2e8f0;padding-top:5pt':'')+'">'+pc.split('\n').filter(function(l){return l.trim();}).map(function(l){return '<li>'+l.trim()+'</li>';}).join('')+'</ul>';
+      return out;
+    })()}
   </div>
 
   <div class="pq-footer"><p>Bergvik Southern Africa (Pty) Ltd &nbsp;·&nbsp; Unit 6, Capital Hill 65, Cnr K101 &amp; Le Roux Avenue, Midrand, Johannesburg 1685</p></div>`;
@@ -4065,7 +4134,9 @@ function captureFormData() {
     ceilingPanels: JSON.parse(JSON.stringify(ceilingPanels || [])),
     quoteComments: JSON.parse(JSON.stringify(typeof quoteComments !== 'undefined' ? quoteComments : [])),
     materialOverrides: JSON.parse(JSON.stringify(materialOverrides || {})),
-    grandTotal: lastResult && lastResult.ready ? lastResult.grandTotal : null
+    grandTotal: lastResult && lastResult.ready ? lastResult.grandTotal : null,
+    clauseChecks: _clauseChecks.slice(),
+    customClarifications: JSON.parse(JSON.stringify(customClarifications))
   };
 }
 
@@ -4475,6 +4546,11 @@ function applyQuoteData(data) {
     return r;
   }) : [];
   renderAdditionalItems();
+  // Restore project clarification state
+  _clauseChecks = data.clauseChecks ? data.clauseChecks.slice() : [true, true, true, true, true];
+  customClarifications = data.customClarifications ? JSON.parse(JSON.stringify(data.customClarifications)) : [];
+  renderClauseChecks();
+  renderCustomClarifications();
   // Fire product type change FIRST so correct sections show
   if (typeof onProductTypeChange === 'function') onProductTypeChange();
   // Re-render extra rooms (Multiple mode)
@@ -7407,6 +7483,9 @@ if (_urlLogId && _urlLogTok) {
 } else {
   initSupabase().then(function() { checkAuthAndInit(); });
 }
+// Init project clarification UI on page load
+renderClauseChecks();
+renderCustomClarifications();
 // Quote number is assigned automatically on sign-in and on New Quote / Reset Form.
 
 </script>
