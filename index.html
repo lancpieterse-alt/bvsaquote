@@ -2581,7 +2581,7 @@ function recalc() {
         // Per-room install
         let rInstSell=0,rInstCost=0,rInstDesc='',rInstQty=1,rInstUnit='sum',rInstCostPP=0,rInstSalePP=0;
         const rInstType=room.installType||'none';
-        if(rInstType!=='none'&&bergvikInstalls!=='None'){
+        if(rInstType!=='none'){
           const rInstMargin=(room.installMargin!==undefined&&room.installMargin>=0)?room.installMargin/100:instMargin;
           if(rInstType==='m2'&&rCArea>0){
             rInstCostPP=room.installCostM2||0; rInstSalePP=sp(rInstCostPP,rInstMargin);
@@ -2633,7 +2633,7 @@ function recalc() {
       // Per-room install (Multiple mode)
       let rInstSell=0, rInstCost=0, rInstDesc='', rInstQty=1, rInstUnit='sum', rInstCostPP=0, rInstSalePP=0;
       const rInstType = room.installType || 'none';
-      if (_isMultipleMode && rInstType !== 'none' && bergvikInstalls !== 'None') {
+      if (_isMultipleMode && rInstType !== 'none') {
         const rInstMargin = (room.installMargin !== undefined && room.installMargin >= 0) ? room.installMargin/100 : instMargin;
         if (rInstType === 'm2' && rArea > 0) {
           rInstCostPP = room.installCostM2||0; rInstSalePP = sp(rInstCostPP, rInstMargin);
@@ -7051,7 +7051,11 @@ function recalcCeiling(isXL) {
       if (fMethod==='3PL') { freightCost=n('freight3PLCost')*fDeliveries2; }
       else { var fkm=n('freightKm'), frate=fMethod==='Internal'?RATES.freightInternal:RATES.freightSub; freightCost=fkm*frate*2*fDeliveries2; var _fd=document.getElementById('freightKmCalcDisplay'); if(_fd) _fd.innerHTML='<strong>'+fmt(freightCost)+'</strong> — '+fkm+'km × 2 × R'+frate.toFixed(2)+(fDeliveries2>1?' × '+fDeliveries2+' trips':''); }
       if (freightCost>0) { freightSell=Math.round(sp(freightCost,fMarg)); var fdescBase=fMethod==='3PL'?'3rd Party Logistics':fMethod==='Internal'?'Bergvik Internal Delivery':'Subcontractor Delivery'; var fdesc=fDeliveries2>1?fdescBase+' (×'+fDeliveries2+' deliveries)':fdescBase; freightItems.push({desc:fdesc, qty:1, unit:'sum', costPP:freightCost, salePP:freightSell, totSell:freightSell, totCost:freightCost}); }
+    } else { // International
+      freightCost=n('freightIntlCost')*fDeliveries2;
+      if (freightCost>0) { freightSell=Math.round(sp(freightCost,fMarg)); var _rp=(v('freightReceivingPort')||'').trim(); var intlDescBase=v('freightMode')+' Freight ('+v('freightIncoterms')+')'+(_rp?' — '+_rp:''); var intlDesc=fDeliveries2>1?intlDescBase+' (×'+fDeliveries2+' deliveries)':intlDescBase; freightItems.push({desc:intlDesc, qty:1, unit:'sum', costPP:freightCost, salePP:freightSell, totSell:freightSell, totCost:freightCost}); }
     }
+    var _fsd=document.getElementById('freightSellDisplay'); if(_fsd) _fsd.innerHTML=freightSell>0?'<strong>'+fmt(freightSell)+'</strong> sell ('+fmt(freightCost)+' cost + '+n('freightMargin')+'% margin'+(fDeliveries2>1?', ×'+fDeliveries2+' trips':'')+')':'Enter cost above';
   }
 
   // ── BOM STATUS ────────────────────────────────────────────────────────────
