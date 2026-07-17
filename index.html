@@ -2017,7 +2017,7 @@ function updateAI(idx, field, val) {
   const sellEl  = document.getElementById('ai-sell-'  + idx);
   const totalEl = document.getElementById('ai-total-' + idx);
   if (sellEl)  sellEl.innerHTML  = '<strong>R ' + sell.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})  + '</strong>';
-  if (totalEl) totalEl.innerHTML = '<strong>R ' + total.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</strong>';
+  if (totalEl) totalEl.innerHTML = '<strong>' + (it.unit==='Rate Only' ? '&mdash;' : 'R ' + total.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})) + '</strong>';
   recalc();
 }
 // ── SECTION CLEAR FUNCTIONS ─────────────────────────────────────────────
@@ -2138,7 +2138,7 @@ function renderHSEItems(){
 function renderAdditionalItems() {
   const c = document.getElementById('additionalItemsContainer');
   if (!additionalItems.length) { c.innerHTML=''; return; }
-  const units = ['sum','m²','lm','nr','each','kg','m','hr','day','set'];
+  const units = ['sum','m²','lm','nr','each','kg','m','hr','day','set','Rate Only'];
   let html = `<table class="add-items-table"><thead><tr>
     <th style="width:28%">Description</th>
     <th style="width:7%">QTY</th>
@@ -2154,6 +2154,7 @@ function renderAdditionalItems() {
     const qty   = it.qty || 1;
     const sell  = (it.margin < 100 && cost > 0) ? cost / (1 - it.margin / 100) : cost;
     const total = sell * qty;
+    const isRateOnly = (it.unit||'sum') === 'Rate Only';
     const unitOpts = units.map(u => `<option value="${u}"${(it.unit||'sum')===u?' selected':''}>${u}</option>`).join('');
     html += `<tr>
       <td><input type="text" value="${escHtml(it.desc)}" oninput="updateAI(${i},'desc',this.value)" placeholder="Description" style="width:100%"></td>
@@ -2162,7 +2163,7 @@ function renderAdditionalItems() {
       <td><input type="text" inputmode="numeric" value="${it.margin||''}" onclick="this.select()" onfocus="this.select()" oninput="updateAI(${i},'margin',this.value)" placeholder="15" style="text-align:right;width:100%"></td>
       <td><input type="text" inputmode="decimal" value="${cost>0?cost.toFixed(2):''}" onclick="this.select()" onfocus="this.select()" oninput="updateAI(${i},'costPP',this.value)" placeholder="0.00" style="text-align:right;width:100%"></td>
       <td><div class="calc-display" id="ai-sell-${i}" style="text-align:right"><strong>R ${sell.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div></td>
-      <td><div class="calc-display" id="ai-total-${i}" style="text-align:right"><strong>R ${total.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div></td>
+      <td><div class="calc-display" id="ai-total-${i}" style="text-align:right"><strong>${isRateOnly ? '&mdash;' : 'R ' + total.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div></td>
       <td><button class="btn-sm btn-remove" onclick="removeAdditionalItem(${i})">✕</button></td>
     </tr>`;
   });
@@ -2903,10 +2904,10 @@ const baseDesc=`${v('freightMode')} Freight (${v('freightIncoterms')})${_rp?' �
     const cost = it.costPP || it.cost || 0;
     const qty  = it.qty || 1;
     const sell = it.margin < 100 && cost > 0 ? Math.round(cost / (1 - it.margin / 100)) : Math.round(cost);
-    const tot  = Math.round(sell * qty);
-    additionalSell += tot;
-    additionalCost += Math.round(cost * qty);
-    return {desc:it.desc||'Additional Item', qty, unit:it.unit||'sum', costPP:cost, salePP:sell, totSell:tot, totCost:Math.round(cost*qty)};
+    const isRO = (it.unit||'sum') === 'Rate Only';
+    const tot  = isRO ? 0 : Math.round(sell * qty);
+    if (!isRO) { additionalSell += tot; additionalCost += Math.round(cost * qty); }
+    return {desc:it.desc||'Additional Item', qty, unit:it.unit||'sum', costPP:cost, salePP:sell, totSell:tot, totCost:isRO?0:Math.round(cost*qty)};
   });
 
   // ── APG / RETENTION ───────────────────────────────────────────────────────
@@ -3568,13 +3569,13 @@ function buildAccessoriesPrintTable(r) {
     return '<p style="color:#888;font-size:8pt;font-style:italic">No accessories items added.</p>';
   }
   const rows = items
-    .filter(it=>it.desc||it.totSell>0)
-    .map(it=>`<tr>
+    .filter(it=>it.desc||it.totSell>0||(it.unit||'sum')==='Rate Only')
+    .map(it=>{ const _roAcc=(it.unit||'sum')==='Rate Only'; return `<tr>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0">${it.desc||'—'}</td>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${it.qty||1}</td>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0">${it.unit||'sum'}</td>
-      <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${fmtN(it.totSell)}</td>
-    </tr>`).join('');
+      <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${_roAcc?'&mdash;':fmtN(it.totSell)}</td>
+    </tr>`; }).join('');
   const total = items.reduce((s,it)=>s+(it.totSell||0),0);
   return `<table class="pq-table" style="width:100%;border-collapse:collapse">
     <thead><tr>
@@ -3681,7 +3682,10 @@ function buildPrintTable(r) {
   if (r.transportItems.length){ rows+=sec('TEAM TRAVEL'); for(const it of r.transportItems) rows+=tr(it.desc,it.qty,it.unit,it.salePP||0,it.totSell); }
   if (r.livingItems.length) { rows+=sec('ACCOMMODATION & LIVING'); for(const it of r.livingItems) rows+=tr(it.desc,it.qty,it.unit,it.salePP||0,it.totSell); }
   if (r.freightItems.length){ rows+=sec('GOODS TRANSPORT'); for(const it of r.freightItems) rows+=tr(it.desc,it.qty,it.unit,it.salePP||0,it.totSell); }
-  if (r.addItems.length)    { rows+=sec('ADDITIONAL ITEMS'); for(const it of r.addItems) rows+=tr(it.desc,it.qty,it.unit,it.salePP||0,it.totSell); }
+  if (r.addItems.length)    { rows+=sec('ADDITIONAL ITEMS'); for(const it of r.addItems) {
+      if ((it.unit||'sum')==='Rate Only') rows+=`<tr><td>${it.desc}</td><td style="text-align:right">${it.qty>0?Number(it.qty).toLocaleString('en-ZA'):''}</td><td>${it.unit}</td><td style="text-align:right">${(it.salePP||0)>0?window._pqFmt(it.salePP||0):''}</td><td style="text-align:right">&mdash;</td></tr>`;
+      else rows+=tr(it.desc,it.qty,it.unit,it.salePP||0,it.totSell);
+    } }
   if (r.apgSell>0) rows+=tr(`APG / ${v('apgReq')}`,1,'sum',0,r.apgSell);
   rows+=`<tr class="total-row"><td colspan="4">TOTAL (excl. VAT)</td><td style="text-align:right">${window._pqFmt(r.grandTotal)}</td></tr>`;
   return `<table class="pq-table"><thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount (${window._pqIsFx?window._pqCur:'R'})</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -6775,8 +6779,9 @@ function recalcAccessories() {
   additionalItems.forEach(function(it) {
     var margin = (it.margin||0) / 100;
     var sell   = margin < 1 && it.costPP > 0 ? it.costPP / (1 - margin) : (it.costPP||0);
-    var total  = (it.qty||0) * sell;
-    var cost   = (it.qty||0) * (it.costPP||0);
+    var isRO   = (it.unit||'sum') === 'Rate Only';
+    var total  = isRO ? 0 : (it.qty||0) * sell;
+    var cost   = isRO ? 0 : (it.qty||0) * (it.costPP||0);
     addSell += total;
     addCost += cost;
   });
@@ -6914,7 +6919,8 @@ var fdbA2=(v('freightMode')||'')+' Freight ('+(v('freightIncoterms')||'')+')'+(_
     addItems: additionalItems.map(function(it) {
       var margin = (it.margin||0)/100;
       var sell   = margin < 1 && it.costPP > 0 ? it.costPP/(1-margin) : (it.costPP||0);
-      return { desc: it.desc||'', qty: it.qty||1, unit: it.unit||'sum', totSell: Math.round((it.qty||1)*sell) };
+      var isRO   = (it.unit||'sum') === 'Rate Only';
+      return { desc: it.desc||'', qty: it.qty||1, unit: it.unit||'sum', salePP: Math.round(sell), totSell: isRO ? 0 : Math.round((it.qty||1)*sell) };
     }),
     ready: grand > 0
   };
@@ -7032,10 +7038,11 @@ function recalcCeiling(isXL) {
     var cost = it.costPP || 0;
     var qty  = it.qty || 1;
     var sell = (it.margin < 100 && cost > 0) ? Math.round(cost / (1 - it.margin / 100)) : Math.round(cost);
-    var tot  = Math.round(qty * sell * (1 - discPct));
+    var isRO = (it.unit||'sum') === 'Rate Only';
+    var tot  = isRO ? 0 : Math.round(qty * sell * (1 - discPct));
     if (it.desc || cost > 0) {
-      addItems.push({desc:it.desc||'—', pn:'—', qty:qty, unit:it.unit||'sum', costPP:cost, salePP:sell, totSell:tot, totCost:qty*cost});
-      addSell += tot; addCost += qty * cost;
+      addItems.push({desc:it.desc||'—', pn:'—', qty:qty, unit:it.unit||'sum', costPP:cost, salePP:sell, totSell:tot, totCost:isRO?0:qty*cost});
+      if (!isRO) { addSell += tot; addCost += qty * cost; }
     }
   });
   totalMatSell += addSell; totalMatCost += addCost;
