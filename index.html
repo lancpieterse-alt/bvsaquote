@@ -3349,6 +3349,7 @@ function clearForm() {
   bomEditMode = false;
   clearBudgetBanner();
   clearDraftBanner();
+  window._pqStatus = 'draft';
   // Re-apply defaults after select reset
   var dateEl = document.getElementById('quoteDate');
   if (dateEl) dateEl.value = new Date().toISOString().slice(0,10);
@@ -3383,9 +3384,10 @@ function _buildPrintWindow(autoprint) {
   // print-proof watermark: a FOREGROUND inline-SVG overlay (prints regardless of the Background Graphics setting)
   var _wmOv='';
   var _mkOv=function(txt,fill,w,fs){return '<div style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;overflow:hidden"><svg width="100%" height="100%" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="_wmp" width="'+w+'" height="300" patternUnits="userSpaceOnUse" patternTransform="rotate(-38)"><text x="'+(w/2)+'" y="160" font-size="'+fs+'" font-family="Arial,sans-serif" font-weight="900" fill="'+fill+'" text-anchor="middle">'+txt+'</text></pattern></defs><rect x="0" y="0" width="100%" height="100%" fill="url(#_wmp)"></rect></svg></div>';};
-  if (document.getElementById('_draftBanner')) {
+  var _pqSt = window._pqStatus || (document.getElementById('_budgetBanner')?'budget':(document.getElementById('_draftBanner')?'draft':'draft'));
+  if (_pqSt === 'draft') {
     _wmOv=_mkOv('DRAFT','rgba(0,0,0,0.11)',300,64);
-  } else if (document.getElementById('_budgetBanner')) {
+  } else if (_pqSt === 'budget') {
     _wmOv=_mkOv('BUDGET ESTIMATE','rgba(230,120,0,0.14)',430,40);
   }
   var tcHtml  = (document.getElementById('tcBody')||{}).innerHTML||'';
@@ -4180,6 +4182,7 @@ function captureFormData() {
 }
 
 function saveQuote(trigger) {
+  window._pqStatus = (trigger === 'publish' ? 'published' : (trigger === 'budget' ? 'budget' : 'draft'));
   // Require at minimum a client name or quote number
   const qNum = (document.getElementById('quoteNumber')||{}).value || '';
   const client = (document.getElementById('clientName')||{}).value || '';
@@ -4514,6 +4517,7 @@ function loadQuoteById(id) {
   const entry = getHistory().find(h => h.id === id);
   if (!entry) { alert('Quote not found.'); return; }
   var status = entry.status || 'published';
+  window._pqStatus = status;
   if (status === 'draft') {
     // Drafts load directly — no modal, just continue editing
     loadQuoteAsViewOnly(entry);
@@ -4629,6 +4633,7 @@ function applyQuoteData(data) {
 function viewFromHistory(id) {
   const entry = getHistory().find(h => h.id === id);
   if (!entry) { alert('Quote not found.'); return; }
+  window._pqStatus = entry.status || 'published';
   const ph = entry.printHtml;
   const pqHtml = ph && ph.quote ? ph.quote : '';
   const tcHtml = ph && ph.tc ? ph.tc : '';
@@ -4644,8 +4649,11 @@ function printQuoteModal() {
   const title = (document.getElementById('quoteViewTitle')||{}).textContent || 'Quote';
   if (!body || !body.innerHTML.trim()) return;
   const css = '.pq-logo{max-height:55pt;max-width:130pt;object-fit:contain;display:block;margin-bottom:6pt}.pq-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12pt;padding-bottom:8pt;border-bottom:2pt solid #1a3a5c}.pq-company h1{font-size:16pt;color:#1a3a5c;font-weight:700}.pq-company p{font-size:8pt;color:#555;line-height:1.5}.pq-meta{text-align:right;font-size:8pt}.pq-meta .quote-no{font-size:12pt;font-weight:700;color:#1a3a5c}.pq-parties{display:grid;grid-template-columns:1fr 1fr;gap:12pt;margin-bottom:10pt}.pq-parties h3{font-size:8pt;text-transform:uppercase;color:#1a3a5c;border-bottom:1pt solid #ccc;margin-bottom:4pt;padding-bottom:2pt}.pq-parties p{font-size:8pt;line-height:1.6}.pq-specs{margin-bottom:8pt}.pq-specs h3{font-size:8pt;text-transform:uppercase;color:#1a3a5c;margin-bottom:4pt;border-bottom:1pt solid #ccc;padding-bottom:2pt}.pq-table{width:100%;border-collapse:collapse;margin-bottom:8pt;font-size:8pt}.pq-table th{background:#1a3a5c!important;color:white!important;padding:4pt 5pt;text-align:right;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pq-table th:first-child,.pq-table th:nth-child(2){text-align:left}.pq-table td{padding:3pt 5pt;border-bottom:0.5pt solid #ddd;text-align:right}.pq-table td:first-child,.pq-table td:nth-child(2){text-align:left}.pq-table .sec-hdr td{background:#eef2f8!important;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pq-table .total-row td{font-weight:700;border-top:1.5pt solid #1a3a5c;font-size:9pt}.pq-totals{display:grid;grid-template-columns:1fr 1fr;gap:10pt;margin-bottom:8pt}.pq-total-box{background:#f4f7fb!important;padding:7pt;border-radius:4pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pq-total-box h3{font-size:8pt;color:#1a3a5c;margin-bottom:4pt}.pq-total-line{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:2pt}.pq-total-line.grand{font-weight:700;font-size:10pt;border-top:1pt solid #1a3a5c;padding-top:3pt;margin-top:3pt}.pq-footer{font-size:7pt;color:#555;border-top:1pt solid #ccc;padding-top:6pt}.pq-terms p{font-size:8pt;line-height:1.6;margin-bottom:2pt}';
+  var _mkOv=function(txt,fill,w2,fs){return '<div style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;overflow:hidden"><svg width="100%" height="100%" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="_wmp" width="'+w2+'" height="300" patternUnits="userSpaceOnUse" patternTransform="rotate(-38)"><text x="'+(w2/2)+'" y="160" font-size="'+fs+'" font-family="Arial,sans-serif" font-weight="900" fill="'+fill+'" text-anchor="middle">'+txt+'</text></pattern></defs><rect x="0" y="0" width="100%" height="100%" fill="url(#_wmp)"></rect></svg></div>';};
+  var _pqSt = window._pqStatus || 'published';
+  var _wmOv = _pqSt==='draft' ? _mkOv('DRAFT','rgba(0,0,0,0.11)',300,64) : (_pqSt==='budget' ? _mkOv('BUDGET ESTIMATE','rgba(230,120,0,0.14)',430,40) : '');
   const w = window.open('','_blank','width=960,height=850');
-  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title><style>body{font-family:Arial,sans-serif;font-size:10pt;color:#000;padding:15mm}'+css+'</style></head><body>'+body.innerHTML+'</body></html>');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title><style>body{font-family:Arial,sans-serif;font-size:10pt;color:#000;padding:15mm}'+css+'</style></head><body><div style="position:relative">'+_wmOv+body.innerHTML+'</div></body></html>');
   w.document.close();
   w.focus();
   setTimeout(function(){w.print();},400);
