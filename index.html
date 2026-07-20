@@ -5744,6 +5744,22 @@ function _distinctContractorCount(entries){
   });
   return clusters.length;
 }
+function _baseQuoteNo(qn){
+  return (''+(qn||'')).replace(/\s*rev\s*0*\d+\s*$/i,'').trim();   // strip trailing RevN (keeps PhN)
+}
+function _revNum(qn){
+  var m=(''+(qn||'')).match(/rev\s*0*(\d+)\s*$/i);
+  return m ? parseInt(m[1],10) : 0;
+}
+function dedupeRevisions(entries){
+  var byBase=new Map();
+  entries.forEach(function(e){
+    var base=_baseQuoteNo(e.quoteNumber);
+    var cur=byBase.get(base);
+    if(!cur || _revNum(e.quoteNumber) > _revNum(cur.quoteNumber)) byBase.set(base,e);
+  });
+  return Array.from(byBase.values());
+}
 function computeProjectGroups(arr) {
   var map = new Map();
   arr.forEach(function(e) {
@@ -5754,8 +5770,9 @@ function computeProjectGroups(arr) {
   });
   var groups = new Map();
   map.forEach(function(entries, key) {
+    var latest = dedupeRevisions(entries);   // only the latest Rev of each quote counts
     // Competing only when 2+ DISTINCT contractors chase the same project (same-contractor phases/products/re-quotes are not competition)
-    if (entries.length > 1 && _distinctContractorCount(entries) > 1) groups.set(key, entries);
+    if (latest.length > 1 && _distinctContractorCount(latest) > 1) groups.set(key, latest);
   });
   return groups;
 }
@@ -5791,13 +5808,14 @@ function openPipelineReport() {
   const closeRateVal   = rateTotalVal>0 ? wonVal/rateTotalVal*100 : 0;
 
   // Opportunity-based closing rate (project groups)
-  const _projGroups = computeProjectGroups(all);
+  const _allDedup = dedupeRevisions(all);   // latest Rev per quote, globally
+  const _projGroups = computeProjectGroups(_allDedup);
   const _groupedEntryIds = new Set();
   _projGroups.forEach(function(entries) { entries.forEach(function(e){ _groupedEntryIds.add(e.id); }); });
   // Each group = 1 opportunity; ungrouped entries = 1 each
   const opportunities = [];
   _projGroups.forEach(function(entries) { opportunities.push(entries); });
-  all.forEach(function(e) { if (!_groupedEntryIds.has(e.id)) opportunities.push([e]); });
+  _allDedup.forEach(function(e) { if (!_groupedEntryIds.has(e.id)) opportunities.push([e]); });
   const oppWon    = opportunities.filter(function(g){ return g.some(function(e){ return e.stage==='Won (PO Issued)'; }); });
   const oppLost   = opportunities.filter(function(g){ return !g.some(function(e){ return e.stage==='Won (PO Issued)'; }) && g.some(function(e){ return e.stage==='Lost'||e.stage==='Not Awarded'; }) && !g.some(function(e){ return e.stage==='Active / Pending'||e.stage==='Quoting'; }); });
   const oppActive = opportunities.filter(function(g){ return !g.some(function(e){ return e.stage==='Won (PO Issued)'; }) && g.some(function(e){ return e.stage==='Active / Pending'||e.stage==='Quoting'; }); });
