@@ -1177,6 +1177,11 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
           <span>⚔ <strong>Competing group filter active</strong> — showing only quotes in this project group</span>
           <button onclick="clearCompetingFilter()" style="background:#f59e0b;color:white;border:none;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;font-weight:600">✕ Show all</button>
         </div>
+        <!-- Revision view banner -->
+        <div id="revisionFilterBanner" style="display:none;background:#e0e7ff;border:1px solid #6366f1;border-radius:6px;padding:7px 14px;margin-bottom:8px;font-size:12px;align-items:center;justify-content:space-between;gap:10px">
+          <span>🔄 <strong>Revision view active</strong> — showing all revisions of this quote</span>
+          <button onclick="clearRevisionFilter()" style="background:#6366f1;color:white;border:none;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;font-weight:600">✕ Show latest only</button>
+        </div>
 
         <!-- Table -->
         <div style="overflow-x:auto">
@@ -5153,11 +5158,27 @@ function renderPipelineTable() {
   const todayFilter = new Date(); todayFilter.setHours(0,0,0,0);
   const dateCutoff = dateF ? new Date(Date.now() - dateF*24*60*60*1000) : null;
 
+  // Revision grouping — collapse to latest Rev per base quote number
+  var _revGroupsMap = new Map();
+  arr.forEach(function(e){ var b=_baseQuoteNo(e.quoteNumber); if(!_revGroupsMap.has(b)) _revGroupsMap.set(b,[]); _revGroupsMap.get(b).push(e); });
+  var _supersededIds = new Set();
+  var _revBadge = new Map();
+  _revGroupsMap.forEach(function(entries,b){
+    if(entries.length>1){
+      var latest=entries.reduce(function(a,c){ return _revNum(c.quoteNumber) > _revNum(a.quoteNumber) ? c : a; });
+      entries.forEach(function(e){ if(e.id!==latest.id) _supersededIds.add(e.id); });
+      var tip='Revisions of this quote:\n'+entries.slice().sort(function(x,y){return _revNum(x.quoteNumber)-_revNum(y.quoteNumber);}).map(function(e){return '\u2022 '+(e.quoteNumber||'?')+' \u2014 '+(e.stage||'');}).join('\n')+'\n\nClick to show all revisions';
+      _revBadge.set(latest.id, {count: entries.length, base: b, tip: tip});
+    }
+  });
+
   let filtered = arr.filter(e => {
     if (stageF && e.stage !== stageF) return false;
     if (typeF  && (e.quoteType||'New Quote') !== typeF) return false;
     if (_selectedReps.size && !_selectedReps.has(e.salesRep)) return false;
     if (_competingFilter && !_competingFilter.has(e.id)) return false;
+    if (!_revFilter && _supersededIds.has(e.id)) return false;
+    if (_revFilter && _baseQuoteNo(e.quoteNumber) !== _revFilter) return false;
     if (dateCutoff) { const d=new Date(e.quoteDate||e.savedAt||0); if(d<dateCutoff) return false; }
     if (q && ![ e.quoteNumber, e.clientName, e.projectName, e.product, e.country ].some(f => (f||'').toLowerCase().includes(q))) return false;
     if (overdueMode) {
@@ -5181,8 +5202,10 @@ function renderPipelineTable() {
   // Sync competing filter banner visibility
   const _cBanner = document.getElementById('competingFilterBanner');
   if (_cBanner) _cBanner.style.display = _competingFilter ? 'flex' : 'none';
+  const _rBanner = document.getElementById('revisionFilterBanner');
+  if (_rBanner) _rBanner.style.display = _revFilter ? 'flex' : 'none';
 
-  const isFiltered = stageF || typeF || _selectedReps.size || q || overdueMode || dateF || _competingFilter;
+  const isFiltered = stageF || typeF || _selectedReps.size || q || overdueMode || dateF || _competingFilter || _revFilter;
   if (el('plKpiCountLabel')) el('plKpiCountLabel').textContent = isFiltered ? 'Filtered Quotes' : 'Total Quotes';
   const todayKpi = new Date(); todayKpi.setHours(0,0,0,0);
   const overdueCount = filtered.filter(e => {
@@ -5275,7 +5298,7 @@ function renderPipelineTable() {
       <td style="font-weight:700;color:var(--brand);white-space:nowrap">${e.quoteNumber||'—'}<br><span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:8px;background:${isIP?'#fef3c7':'#dbeafe'};color:${isIP?'#92400e':'#1e40af'}">${isIP?'In-Project':'New'}</span></td>
       <td style="white-space:nowrap"><small style="color:var(--muted)">${e.quoteDate ? fmtDate(e.quoteDate) : '—'}</small></td>
       <td>${e.clientName||'—'}${e.country && e.country !== 'South Africa' ? `<br><small style="color:var(--muted)">${e.country}</small>` : ''}</td>
-      <td style="color:var(--muted)">${e.projectName||'—'}${_groupedIds.has(e.id)?`<br><span onclick="filterCompetingGroup(${_groupedIds.get(e.id).groupIdx})" title="${_groupedIds.get(e.id).tip.replace(/"/g,'&quot;')}" style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:8px;background:#fef9c3;color:#854d0e;cursor:pointer;border:1px solid #f59e0b">⚔ ${_groupedIds.get(e.id).count} competing — click to view</span>`:''}</td>
+      <td style="color:var(--muted)">${e.projectName||'—'}${_groupedIds.has(e.id)?`<br><span onclick="filterCompetingGroup(${_groupedIds.get(e.id).groupIdx})" title="${_groupedIds.get(e.id).tip.replace(/"/g,'&quot;')}" style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:8px;background:#fef9c3;color:#854d0e;cursor:pointer;border:1px solid #f59e0b">⚔ ${_groupedIds.get(e.id).count} competing — click to view</span>`:''}${_revBadge.has(e.id)?`<br><span onclick="filterRevisionGroup('${_revBadge.get(e.id).base}')" title="${_revBadge.get(e.id).tip.replace(/"/g,'&quot;')}" style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:8px;background:#e0e7ff;color:#3730a3;cursor:pointer;border:1px solid #6366f1">🔄 ${_revBadge.get(e.id).count} revisions — click to view</span>`:''}</td>
       <td><small>${e.product||'—'}</small></td>
       <td style="text-align:right;${valueColor}">${fmtR(e.projectValue)}</td>
       <td>${stageHtml}</td>
@@ -5618,6 +5641,22 @@ function filterCompetingGroup(idx) {
 function clearCompetingFilter() {
   _competingFilter = null;
   var banner = document.getElementById('competingFilterBanner');
+  if (banner) banner.style.display = 'none';
+  renderPipelineTable();
+}
+
+// ─── Revision group filter ────────────────────────────────────────────────────
+var _revFilter = null; // base quote number when active
+function filterRevisionGroup(base){
+  _revFilter = base;
+  var banner = document.getElementById('revisionFilterBanner');
+  if (banner) banner.style.display = 'flex';
+  renderPipelineTable();
+  var tbl = document.getElementById('plTable'); if (tbl) tbl.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function clearRevisionFilter(){
+  _revFilter = null;
+  var banner = document.getElementById('revisionFilterBanner');
   if (banner) banner.style.display = 'none';
   renderPipelineTable();
 }
