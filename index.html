@@ -5710,6 +5710,40 @@ function normalizeProjectName(name) {
   return n;
 }
 
+function _lev(a,b){
+  var m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+  var d=[]; for(var i=0;i<=m;i++){ d[i]=[i]; }
+  for(var j=0;j<=n;j++){ d[0][j]=j; }
+  for(i=1;i<=m;i++){ for(j=1;j<=n;j++){
+    var c=a.charAt(i-1)===b.charAt(j-1)?0:1;
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
+  }}
+  return d[m][n];
+}
+function _normClient(name){
+  if(!name) return '';
+  var n=(''+name).toLowerCase();
+  n=n.replace(/\(pty\)\s*ltd|\bpty\s*ltd\b|\bpty\b|\bltd\b|\blimited\b|\bcc\b|\binc\b|\bcorp(oration)?\b|\bt\/a\b/g,' ');
+  n=n.replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  return n;
+}
+function _sameContractor(a,b){
+  if(a===b) return true;
+  if(!a||!b) return false;
+  if(a.split(' ')[0]!==b.split(' ')[0]) return false;   // must share first word
+  var m=Math.max(a.length,b.length);
+  return m>0 && (1 - _lev(a,b)/m) >= 0.85;               // >=85% similar => same contractor (typo tolerance)
+}
+function _distinctContractorCount(entries){
+  var clusters=[];
+  entries.forEach(function(e){
+    var c=_normClient(e.clientName);
+    if(!c) return;
+    for(var i=0;i<clusters.length;i++){ if(_sameContractor(c,clusters[i])) return; }
+    clusters.push(c);
+  });
+  return clusters.length;
+}
 function computeProjectGroups(arr) {
   var map = new Map();
   arr.forEach(function(e) {
@@ -5720,7 +5754,8 @@ function computeProjectGroups(arr) {
   });
   var groups = new Map();
   map.forEach(function(entries, key) {
-    if (entries.length > 1) groups.set(key, entries);
+    // Competing only when 2+ DISTINCT contractors chase the same project (same-contractor phases/products/re-quotes are not competition)
+    if (entries.length > 1 && _distinctContractorCount(entries) > 1) groups.set(key, entries);
   });
   return groups;
 }
