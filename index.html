@@ -3612,7 +3612,17 @@ function buildAccessoriesPrintTable(r) {
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${it.salePP>0?fmtN(it.salePP):''}</td>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${_roAcc?'&mdash;':fmtN(it.totSell)}</td>
     </tr>`; }).join('');
-  const total = items.reduce((s,it)=>s+(it.totSell||0),0);
+  // Goods Transport — mirror the main table so freight shows in the BOQ, not just the summary
+  let freightRows = '';
+  let freightTot = 0;
+  if (r.freightItems && r.freightItems.length) {
+    freightRows = '<tr><td colspan="5" style="padding:5pt 8pt;background:#eef2f8;font-weight:700;text-transform:uppercase;font-size:7.5pt;letter-spacing:.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact">Goods Transport</td></tr>';
+    for (const it of r.freightItems) {
+      freightTot += (it.totSell||0);
+      freightRows += '<tr><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0">'+(it.desc||'—')+'</td><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">'+(it.qty||1)+'</td><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:center">'+(it.unit||'sum')+'</td><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">'+(it.salePP>0?fmtN(it.salePP):'')+'</td><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">'+fmtN(it.totSell)+'</td></tr>';
+    }
+  }
+  const total = items.reduce((s,it)=>s+(it.totSell||0),0) + freightTot;
   return `<table class="pq-table" style="width:100%;border-collapse:collapse">
     <thead><tr>
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:left">Description</th>
@@ -3621,7 +3631,7 @@ function buildAccessoriesPrintTable(r) {
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:right">Rate</th>
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:right">Amount (${window._pqIsFx?window._pqCur:'R'})</th>
     </tr></thead>
-    <tbody>${rows}
+    <tbody>${rows}${freightRows}
       <tr class="total-row"><td colspan="4" style="padding:6pt 8pt;font-weight:700">TOTAL (excl. VAT)</td>
         <td style="padding:6pt 8pt;text-align:right;font-weight:700">${fmtN(total)}</td></tr>
     </tbody>
