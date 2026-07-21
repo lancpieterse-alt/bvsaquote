@@ -3488,9 +3488,18 @@ function buildPrintQuote(r) {
       const header = isMulti
         ? `<h3>Technical Specifications — ${extraRooms.length} Areas</h3>`
         : `<h3>${_pt} — Technical Specifications</h3>`;
+      let _instDisplay;
+      if (isMulti) {
+        const _its = [...new Set(extraRooms.filter(rm=>(rm.installType||'none')!=='none').map(rm=>rm.installType))];
+        if (_its.length===0) _instDisplay = 'No';
+        else if (_its.length===1) _instDisplay = (_its[0]==='m2' ? 'Cost per m²' : _its[0]==='dayrate' ? 'Day Rate' : 'Yes');
+        else _instDisplay = 'Per area';
+      } else {
+        _instDisplay = ({'m2':'Cost per m²','dayrate':'Day Rate','None':'No','Supervisor':'Supervisor Only'}[v('bergvikInstalls')])||v('bergvikInstalls');
+      }
       const commonSpecs = `<div class="spec-grid" style="margin-top:4pt">
         <div class="spec-item"><label>Drawing No.</label><span>${v('drawingNumber')||'TBC'}</span></div>
-        <div class="spec-item"><label>Installation</label><span>${({'m2':'Cost per m²','dayrate':'Day Rate','None':'No','Supervisor':'Supervisor Only'}[v('bergvikInstalls')])||v('bergvikInstalls')}</span></div>
+        <div class="spec-item"><label>Installation</label><span>${_instDisplay}</span></div>
         ${isMulti?`<div class="spec-item"><label>Total Area (all)</label><span>${r.totalArea||r.area||0} m²</span></div>`:''}
       </div>`;
       return header + area1Block + extraBlocks + commonSpecs;
