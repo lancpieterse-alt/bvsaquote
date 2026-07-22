@@ -2291,6 +2291,7 @@ function onInstallChange() {
   show('hseSection', hasInstall);
   show('deploymentSection', hasInstall);
   show('transportSection', hasInstall);
+  updateLivingVisibility();
   recalc();
   if (typeof updateInstallAlert === 'function') updateInstallAlert();
 }
@@ -2343,13 +2344,14 @@ function onTravelModeChange() {
   recalc();
 }
 function updateLivingVisibility() {
+  // Accommodation & Living is available whenever installation is enabled — it is
+  // NOT dependent on how the team travels (team size × nights × rate).
+  const hasInstall = v('bergvikInstalls')!=='None';
+  show('livingSection', hasInstall);
   const m=v('travelMode');
-  if (m==='') { show('livingSection',false); show('shortTripInfo',false); return; }
-  if (m==='Flying') { show('livingSection',true); show('shortTripInfo',false); return; }
   const dist=n('distanceOneWay');
-  const near = dist>0 && dist<150;
+  const near = m==='Driving' && dist>0 && dist<150;
   show('shortTripInfo', near);
-  show('livingSection', dist>=150 || dist===0);
 }
 function onLocalIntlChange() { show('visaSection', v('localIntl')==='International'); recalc(); }
 function onAccommodationLinkInput() {
@@ -2865,7 +2867,7 @@ function recalc() {
   // ── ACCOMMODATION & LIVING ────────────────────────────────────────────────
   const livingItems=[];
   let livingSell=0, livingCost=0;
-  if (bergvikInstalls!=='None' && v('travelMode')!=='') {
+  if (bergvikInstalls!=='None') {
     const nights=n('numberOfNights'), lm=n('livingMargin')/100;
     const accomT=teamSize*nights*(n('accomPPN')||300)*deployments;
     const foodT =teamSize*nights*(n('foodPPD')||150)*deployments;
@@ -7289,7 +7291,7 @@ function recalcCeiling(isXL) {
 
   // ── LIVING ────────────────────────────────────────────────────────────────
   var livingItems=[]; var livingSell=0, livingCost=0;
-  if (bergvikInstalls !== 'None' && v('travelMode') !== '') {
+  if (bergvikInstalls !== 'None') {
     var nights=n('numberOfNights'), lm=n('livingMargin')/100;
     var accomT=teamSize*nights*(n('accomPPN')||300)*deployments;
     var foodT =teamSize*nights*(n('foodPPD')||150)*deployments;
