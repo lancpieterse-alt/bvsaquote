@@ -4971,7 +4971,7 @@ function getPipeline() {
   try { return JSON.parse(localStorage.getItem(PIPELINE_KEY)) || []; } catch(e) { return []; }
 }
 
-async function savePipelineData(arr) {
+async function savePipelineData(arr, deletedId) {
   // Always update local immediately so UI stays responsive
   _pipelineCache = arr;
   localStorage.setItem(PIPELINE_KEY, JSON.stringify(arr));
@@ -4984,7 +4984,7 @@ async function savePipelineData(arr) {
       if (!_rrP.error && _rrP.data && _rrP.data.session) {
         session = _rrP.data.session; // Silent token refresh — continue normally
       } else {
-        _pendingSyncPipeline = arr;
+        _pendingSyncPipeline = { arr: arr, deletedId: deletedId };
         setDbStatus('offline');
         _showOfflineBanner();
         _showSyncWarning(
@@ -5002,6 +5002,8 @@ async function savePipelineData(arr) {
     var remote = (res && res.data && Array.isArray(res.data.value)) ? res.data.value : [];
     var localMap  = new Map(arr.map(function(e){ return [e.id, e]; }));
     var remoteMap = new Map(remote.map(function(e){ return [e.id, e]; }));
+    // A deleted entry must not be resurrected from the remote copy during merge.
+    if (deletedId != null) { remoteMap.delete(deletedId); localMap.delete(deletedId); }
     var allIds = new Set([...localMap.keys(), ...remoteMap.keys()]);
     var merged = [];
     allIds.forEach(function(id) {
@@ -5518,7 +5520,7 @@ function savePlEntry() {
 function deletePipelineEntry(id) {
   if (!confirm('Delete this pipeline entry? This cannot be undone.')) return;
   const arr = getPipeline().filter(e => e.id !== id);
-  savePipelineData(arr);
+  savePipelineData(arr, id);
   renderPipelineTable();
 }
 
@@ -7687,7 +7689,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     (function() {
       var _pp = _pendingSyncPipeline; _pendingSyncPipeline = null;
       var _ph = _pendingSyncHistory;  _pendingSyncHistory  = null;
-      if (_pp) savePipelineData(_pp).catch(function(e){ console.warn('Post-login pipeline retry error:', e); });
+      if (_pp) savePipelineData(_pp.arr, _pp.deletedId).catch(function(e){ console.warn('Post-login pipeline retry error:', e); });
       if (_ph) saveHistoryData(_ph.arr, _ph.deletedId).catch(function(e){ console.warn('Post-login history retry error:', e); });
       _hideOfflineBanner(); // Clear banner immediately on login; success paths will keep it hidden
     })();
