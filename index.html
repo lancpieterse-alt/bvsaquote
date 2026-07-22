@@ -2278,19 +2278,32 @@ function onStepsRampChange() {
   show('rampDetails',  s==='Ramp' ||s==='Both');
   recalc();
 }
+// True when installation happens anywhere on the job: a global installer is selected,
+// OR (multi-area) any area has its own installation set. Drives whether the global
+// mobilisation costs (HSE, Team Travel, Accommodation) are available — so on multi-area
+// jobs you never have to touch the global Installation dropdown to unlock them.
+function _hasAnyInstall() {
+  // Multi-area: driven ONLY by per-area installation — no connection to the global
+  // Installation dropdown. Single-area: the global dropdown IS the installation setting.
+  if (v('productType') === 'Multiple') {
+    return Array.isArray(extraRooms) && extraRooms.some(function(r){ return (r.installType||'none') !== 'none'; });
+  }
+  return v('bergvikInstalls') !== 'None';
+}
 function onInstallChange() {
   const val=v('bergvikInstalls');
   const hasInstall = val!=='None';
   const isM2      = val==='m2';
   const isDayRate = val==='dayrate';
+  const mobActive = _hasAnyInstall();
   show('installDetails', hasInstall);
   show('installM2Group', isM2);
   show('installM2MarginGroup', isM2);
   show('installDayRateGroup', isDayRate);
   show('installDaysGroup', isDayRate);
-  show('hseSection', hasInstall);
-  show('deploymentSection', hasInstall);
-  show('transportSection', hasInstall);
+  show('hseSection', mobActive);
+  show('deploymentSection', mobActive);
+  show('transportSection', mobActive);
   updateLivingVisibility();
   recalc();
   if (typeof updateInstallAlert === 'function') updateInstallAlert();
@@ -2344,9 +2357,10 @@ function onTravelModeChange() {
   recalc();
 }
 function updateLivingVisibility() {
-  // Accommodation & Living is available whenever installation is enabled — it is
-  // NOT dependent on how the team travels (team size × nights × rate).
-  const hasInstall = v('bergvikInstalls')!=='None';
+  // Accommodation & Living is available whenever installation is enabled anywhere on
+  // the job (global installer OR any area in multi-area mode) — it is NOT dependent on
+  // how the team travels (team size × nights × rate).
+  const hasInstall = _hasAnyInstall();
   show('livingSection', hasInstall);
   const m=v('travelMode');
   const dist=n('distanceOneWay');
@@ -2472,6 +2486,14 @@ function recalc() {
   const bergvikInstalls = v('bergvikInstalls');
   const deployments = parseInt(v('deployments'))||1;
   const teamSize    = n('teamSize')||2;
+  // Installation active anywhere (global installer OR any area in multi-area mode).
+  // Keep the global mobilisation-cost sections in sync every recalc so per-area
+  // install changes reveal/collapse HSE, Team Travel and Accommodation automatically.
+  const installActive = _hasAnyInstall();
+  show('hseSection', installActive);
+  show('deploymentSection', installActive);
+  show('transportSection', installActive);
+  updateLivingVisibility();
 
   // ── MATERIALS ──────────────────────────────────────────────────────────────
   const matRows = [
@@ -2809,7 +2831,7 @@ function recalc() {
   // ── HSE ───────────────────────────────────────────────────────────────────
   let hseSell=0, hseCostAmt=0;
   const hseItems=[];
-  if (bergvikInstalls!=='None') {
+  if (installActive) {
     const hseReq=v('hseReq');
     if (hseReq==='Standard')      hseCostAmt=COST.hseStandard;
     else if (hseReq==='Special HSE') hseCostAmt=n('hseCost');
@@ -2843,7 +2865,7 @@ function recalc() {
   // ── TEAM TRAVEL ───────────────────────────────────────────────────────────
   const transportItems=[];
   let transportSell=0, transportCost=0;
-  if (bergvikInstalls!=='None') {
+  if (installActive) {
     const travelMode=v('travelMode');
     if (travelMode==='Flying') {
       const fCost=n('flightCostPerDeploy')*deployments;
@@ -2867,7 +2889,7 @@ function recalc() {
   // ── ACCOMMODATION & LIVING ────────────────────────────────────────────────
   const livingItems=[];
   let livingSell=0, livingCost=0;
-  if (bergvikInstalls!=='None') {
+  if (installActive) {
     const nights=n('numberOfNights'), lm=n('livingMargin')/100;
     const accomT=teamSize*nights*(n('accomPPN')||300)*deployments;
     const foodT =teamSize*nights*(n('foodPPD')||150)*deployments;
