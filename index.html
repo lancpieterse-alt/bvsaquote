@@ -6899,11 +6899,14 @@ function onProductTypeChange() {
     if (csg)   csg.style.display   = 'none';
     if (addBtn) addBtn.style.display = '';
     if (msgr)  msgr.style.display   = '';
-    // Hide global material margin + install section in Multiple mode (each area has its own)
+    // Hide global material margin in Multiple mode (each area has its own).
+    // The Installation section stays visible — it must never be hidden by mode;
+    // its follow-on options (HSE, Team Travel, Accommodation) collapse only when
+    // Installation = None, which onInstallChange handles independently.
     var mmGrp = document.getElementById('globalMatMarginRow');
     if (mmGrp) mmGrp.style.display = 'none';
     var instSub = document.getElementById('installSubsection');
-    if (instSub) instSub.style.display = 'none';
+    if (instSub) instSub.style.display = '';
     // Ensure at least 1 area card
     if (extraRooms.length === 0) extraRooms.push(defaultRoom());
     renderExtraRooms();
