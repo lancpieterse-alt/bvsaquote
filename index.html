@@ -3624,17 +3624,40 @@ function buildAccessoriesPrintTable(r) {
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${it.salePP>0?fmtN(it.salePP):''}</td>
       <td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">${_roAcc?'&mdash;':fmtN(it.totSell)}</td>
     </tr>`; }).join('');
-  // Goods Transport — mirror the main table so freight shows in the BOQ, not just the summary
-  let freightRows = '';
-  let freightTot = 0;
-  if (r.freightItems && r.freightItems.length) {
-    freightRows = '<tr><td colspan="5" style="padding:5pt 8pt;background:#eef2f8;font-weight:700;text-transform:uppercase;font-size:7.5pt;letter-spacing:.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact">Goods Transport</td></tr>';
-    for (const it of r.freightItems) {
-      freightTot += (it.totSell||0);
-      freightRows += '<tr><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0">'+(it.desc||'—')+'</td><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">'+(it.qty||1)+'</td><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:center">'+(it.unit||'sum')+'</td><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">'+(it.salePP>0?fmtN(it.salePP):'')+'</td><td style="padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0;text-align:right">'+fmtN(it.totSell)+'</td></tr>';
+  // Cost buckets beyond accessories — mirror the main BOQ so Installation, HSE,
+  // Installer Transport, Accommodation and Goods Transport show in the table, not just the summary.
+  const _acell = 'padding:5pt 8pt;border-bottom:0.5pt solid #e2e8f0';
+  const _ahdr  = 'padding:5pt 8pt;background:#eef2f8;font-weight:700;text-transform:uppercase;font-size:7.5pt;letter-spacing:.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact';
+  let extraRows = '';
+  let extraTot = 0;
+  const addSection = (title, arr) => {
+    if (!arr || !arr.length) return;
+    extraRows += '<tr><td colspan="5" style="'+_ahdr+'">'+title+'</td></tr>';
+    for (const it of arr) {
+      extraTot += (it.totSell||0);
+      extraRows += '<tr><td style="'+_acell+'">'+(it.desc||'—')+'</td>'
+        +'<td style="'+_acell+';text-align:right">'+(it.qty||1)+'</td>'
+        +'<td style="'+_acell+';text-align:center">'+(it.unit||'sum')+'</td>'
+        +'<td style="'+_acell+';text-align:right">'+(it.salePP>0?fmtN(it.salePP):'')+'</td>'
+        +'<td style="'+_acell+';text-align:right">'+fmtN(it.totSell)+'</td></tr>';
     }
+  };
+  addSection('Installation', r.installItems);
+  addSection('HSE', r.hseItems);
+  addSection('Installer Transport', r.transportItems);
+  addSection('Accommodation & Living', r.livingItems);
+  addSection('Goods Transport', r.freightItems);
+  if (r.apgSell > 0) {
+    const _apgDesc = (typeof v === 'function' && v('apgReq')) ? v('apgReq') : 'Advance Payment / Retention Guarantee';
+    extraRows += '<tr><td colspan="5" style="'+_ahdr+'">Other</td></tr>'
+      + '<tr><td style="'+_acell+'">'+_apgDesc+'</td>'
+      + '<td style="'+_acell+';text-align:right">1</td>'
+      + '<td style="'+_acell+';text-align:center">sum</td>'
+      + '<td style="'+_acell+';text-align:right"></td>'
+      + '<td style="'+_acell+';text-align:right">'+fmtN(r.apgSell)+'</td></tr>';
+    extraTot += r.apgSell;
   }
-  const total = items.reduce((s,it)=>s+(it.totSell||0),0) + freightTot;
+  const total = items.reduce((s,it)=>s+(it.totSell||0),0) + extraTot;
   return `<table class="pq-table" style="width:100%;border-collapse:collapse">
     <thead><tr>
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:left">Description</th>
@@ -3643,7 +3666,7 @@ function buildAccessoriesPrintTable(r) {
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:right">Rate</th>
       <th style="padding:6pt 8pt;background:#1a3a5c;color:white;text-align:right">Amount (${window._pqIsFx?window._pqCur:'R'})</th>
     </tr></thead>
-    <tbody>${rows}${freightRows}
+    <tbody>${rows}${extraRows}
       <tr class="total-row"><td colspan="4" style="padding:6pt 8pt;font-weight:700">TOTAL (excl. VAT)</td>
         <td style="padding:6pt 8pt;text-align:right;font-weight:700">${fmtN(total)}</td></tr>
     </tbody>
@@ -6503,7 +6526,6 @@ function showDimsCalc() {
           <tr style="border-bottom:1px solid var(--border);background:var(--light)"><td style="padding:5px 8px">Super Link</td><td style="padding:5px 8px;text-align:right">500</td><td style="padding:5px 8px;text-align:right">1 000</td><td style="padding:5px 8px;text-align:right">—</td><td style="padding:5px 8px;text-align:right">45</td></tr>
         </tbody>
       </table>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Rules: Max 3 hours travel one-way · Allow 2 hours offloading per trip · Total trip ≤ 8 working hours</div>
     </div>`;
 
   const _addr = v('clientAddress');
