@@ -3490,12 +3490,10 @@ function buildPrintQuote(r) {
         : `<h3>${_pt} — Technical Specifications</h3>`;
       let _instDisplay;
       if (isMulti) {
-        const _its = [...new Set(extraRooms.filter(rm=>(rm.installType||'none')!=='none').map(rm=>rm.installType))];
-        if (_its.length===0) _instDisplay = 'No';
-        else if (_its.length===1) _instDisplay = (_its[0]==='m2' ? 'Cost per m²' : _its[0]==='dayrate' ? 'Day Rate' : 'Yes');
-        else _instDisplay = 'Per area';
+        _instDisplay = extraRooms.some(rm=>(rm.installType||'none')!=='none') ? 'Yes' : 'No';
       } else {
-        _instDisplay = ({'m2':'Cost per m²','dayrate':'Day Rate','None':'No','Supervisor':'Supervisor Only'}[v('bergvikInstalls')])||v('bergvikInstalls');
+        const _bi = v('bergvikInstalls');
+        _instDisplay = (_bi && _bi !== 'None') ? 'Yes' : 'No';
       }
       const commonSpecs = `<div class="spec-grid" style="margin-top:4pt">
         <div class="spec-item"><label>Drawing No.</label><span>${v('drawingNumber')||'TBC'}</span></div>
