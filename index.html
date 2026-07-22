@@ -2283,11 +2283,9 @@ function onStepsRampChange() {
 // mobilisation costs (HSE, Team Travel, Accommodation) are available — so on multi-area
 // jobs you never have to touch the global Installation dropdown to unlock them.
 function _hasAnyInstall() {
-  // Multi-area: driven ONLY by per-area installation — no connection to the global
-  // Installation dropdown. Single-area: the global dropdown IS the installation setting.
-  if (v('productType') === 'Multiple') {
-    return Array.isArray(extraRooms) && extraRooms.some(function(r){ return (r.installType||'none') !== 'none'; });
-  }
+  // The Main Installation Option is the single driver for the follow-up cost sections
+  // (HSE, Team Travel, Installer Transport, Accommodation) in ALL modes, including
+  // multi-area: None (Material Only) hides them; Day Rate / Per m² / Supervisor shows them.
   return v('bergvikInstalls') !== 'None';
 }
 function onInstallChange() {
