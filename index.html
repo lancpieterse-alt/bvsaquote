@@ -370,6 +370,12 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
             <div id="fxGuardWarn" style="display:none;color:#b45309;font-size:11px;margin-top:6px;font-weight:600">&#9888; Enter exchange rate to enable foreign currency pricing</div>
             <small id="fxRateNote" style="color:var(--muted);margin-top:4px;display:block"></small>
           </div>
+          <div class="form-group" id="vatToggleGroup" style="margin-top:12px;margin-bottom:0;border-top:1px solid var(--border);padding-top:12px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0">
+              <input type="checkbox" id="vatEnabled" checked onchange="drecalc()" style="width:15px;height:15px;accent-color:var(--brand);flex-shrink:0">
+              <span style="font-size:12.5px;font-weight:600">Add 15% VAT <span style="color:var(--muted);font-weight:400">— untick for cross-border / export quotes (no VAT)</span></span>
+            </label>
+          </div>
         </div>
 
         <div class="form-grid">
@@ -656,13 +662,6 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
             <input type="text" id="discountReason" placeholder="Reason for discount (if any)" oninput="drecalc()">
           </div>
 
-          <div class="form-group" id="vatTreatmentGroup" style="display:none">
-            <label>VAT on Quote</label>
-            <select id="vatTreatment" onchange="drecalc()">
-              <option value="excl">No VAT — Price quoted excl. VAT</option>
-              <option value="incl">Incl. VAT (15%)</option>
-            </select>
-          </div>
           </div><!-- end marginSettingsGroup -->
 
           <div class="section-title" id="additionalSectionTitle">Additional Items</div>
@@ -2040,6 +2039,9 @@ function updateAI(idx, field, val) {
 }
 // ── SECTION CLEAR FUNCTIONS ─────────────────────────────────────────────
 function sv(id,val){var e=document.getElementById(id);if(e)e.value=val;}
+// VAT toggle — checked = charge 15% VAT (SA); unchecked = cross-border/export, no VAT.
+// Defaults to ON when the element is missing (older quotes that predate the toggle).
+function _vatOn(){ var e=document.getElementById('vatEnabled'); return e ? e.checked : true; }
 function clearInstallation(){sv('bergvikInstalls','None');onInstallChange();sv('installCostPerM2','235');sv('installMargin','37.5');sv('installDayRate','0');sv('installDays','1');recalc();}
 function clearHSE(){sv('hseReq','None');onHSEChange();sv('hseMargin','0');sv('hseCost','');sv('inductionRequired','No');onInductionChange();sv('inductionDays','1');sv('inductionCost','0');hseExtraItems.length=0;renderHSEItems();recalc();}
 function clearDeployment(){sv('deployments','');recalc();}
@@ -3362,6 +3364,7 @@ function clearForm() {
   renderHSEItems();
   renderAdditionalItems();
   _clauseChecks = [true, true, true, true, true];
+  var _veClr = document.getElementById('vatEnabled'); if (_veClr) _veClr.checked = true;
   customClarifications = [];
   renderClauseChecks();
   renderCustomClarifications();
@@ -3564,11 +3567,11 @@ function buildPrintQuote(r) {
       ${r.additionalSell>0?`<div class="pq-total-line"><span>${r.type==='Accessories'?'Accessories':'Additional Items'}</span><span>${window._pqFmt(r.additionalSell)}</span></div>`:''}
       ${r.apgSell>0?`<div class="pq-total-line"><span>APG / Guarantee</span><span>${window._pqFmt(r.apgSell)}</span></div>`:''}
       ${(()=>{
-        const _vat=(v('vatTreatment')||'incl');
+        const _vatOnPrint = (document.getElementById('vatEnabled') ? document.getElementById('vatEnabled').checked : true);
         const _rateNote=window._pqIsFx?`<div style="font-size:7pt;color:#888;margin-top:2pt">Rate: 1 ${window._pqCur} = R${Number(window._pqRate).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:4})} &nbsp;|&nbsp; ZAR equivalent: ${fmt(r.grandTotal)}</div>`:'';
-        if (window._pqIsFx && _vat==='excl') {
-          return `<div class="pq-total-line grand" style="font-weight:700"><span>TOTAL (excl. VAT)</span><span>${window._pqFmt(r.grandTotal)}</span></div>
-      <div style="font-size:7.5pt;color:#888;margin-top:2pt;font-style:italic">VAT not applicable to this quotation.</div>${_rateNote}`;
+        if (!_vatOnPrint) {
+          return `<div class="pq-total-line grand" style="font-weight:700"><span>TOTAL</span><span>${window._pqFmt(r.grandTotal)}</span></div>
+      <div style="font-size:7.5pt;color:#888;margin-top:2pt;font-style:italic">VAT not applicable to this quotation (cross-border supply).</div>${_rateNote}`;
         }
         return `<div class="pq-total-line grand"><span>TOTAL (excl. VAT)</span><span>${window._pqFmt(r.grandTotal)}</span></div>
       <div class="pq-total-line"><span>VAT (15%)</span><span>${window._pqFmt(r.grandTotal*0.15)}</span></div>
@@ -3901,7 +3904,7 @@ function generateExcel() {
   sum.push(dr4('Valid Until:', v('validUntil'), 'Currency:', v('quoteCurrency')||'ZAR'));
   sum.push(dr4('Sales Rep:', rep, 'Forex Rate:', n('forexRate')>1?n('forexRate'):'N/A'));
   sum.push(dr4('Rep Phone:', ri.phone||'', 'Rep Email:', ri.email||''));
-  sum.push([lbl('VAT Treatment:'), val_(v('vatTreatment')||'Incl. 15% VAT'), sp(null)||val_(''), val_('')]);
+  sum.push([lbl('VAT Treatment:'), val_(_vatOn()?'Incl. 15% VAT':'No VAT — cross-border supply'), sp(null)||val_(''), val_('')]);
   sum.push([gap()]);
 
   // CLIENT
@@ -4021,8 +4024,12 @@ function generateExcel() {
   priceRows.forEach(function(pr) { sum.push([lbl(pr[0]), cur(pr[1]), sp(null)||val_(''), val_('')]); });
   // Totals
   sum.push([totLbl('TOTAL (excl. VAT):'), totNum(r.grandTotal,true), sp(f_tot), sp(f_tot)]);
-  sum.push([totLbl('VAT (15%):'), totNum(r.grandTotal*0.15,true), sp(f_tot), sp(f_tot)]);
-  sum.push([totLbl('TOTAL (incl. VAT):'), totNum(r.grandTotal*1.15,true), sp(f_tot), sp(f_tot)]);
+  if (_vatOn()) {
+    sum.push([totLbl('VAT (15%):'), totNum(r.grandTotal*0.15,true), sp(f_tot), sp(f_tot)]);
+    sum.push([totLbl('TOTAL (incl. VAT):'), totNum(r.grandTotal*1.15,true), sp(f_tot), sp(f_tot)]);
+  } else {
+    sum.push([totLbl('VAT:'), val_('Not applicable — cross-border'), sp(f_tot), sp(f_tot)]);
+  }
   sum.push([lbl('Rate per m²:'), cur(r.ratePerM2), sp(null)||val_(''), val_('')]);
   sum.push([gap()]);
 
@@ -4092,8 +4099,10 @@ function generateExcel() {
   }
   // Grand totals
   bom.push([totLbl('TOTAL (excl. VAT)'), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), totNum(r.grandTotal,true)]);
-  bom.push([totLbl('VAT (15%)'), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), totNum(r.grandTotal*0.15,true)]);
-  bom.push([totLbl('TOTAL (incl. VAT)'), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), totNum(r.grandTotal*1.15,true)]);
+  if (_vatOn()) {
+    bom.push([totLbl('VAT (15%)'), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), totNum(r.grandTotal*0.15,true)]);
+    bom.push([totLbl('TOTAL (incl. VAT)'), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), sp(f_tot), totNum(r.grandTotal*1.15,true)]);
+  }
 
   const ws2 = makeWS(bom, [{wch:45},{wch:13},{wch:8},{wch:8},{wch:14},{wch:14},{wch:14}]);
   XLSX.utils.book_append_sheet(wb, ws2, 'BOM');
@@ -4236,6 +4245,7 @@ function captureFormData() {
   });
   return {
     fields,
+    vatEnabled: (function(){ var e=document.getElementById('vatEnabled'); return e ? e.checked : true; })(),
     additionalItems: JSON.parse(JSON.stringify(additionalItems)),
     hseExtraItems: JSON.parse(JSON.stringify(hseExtraItems)),
     extraRooms: JSON.parse(JSON.stringify(extraRooms)),
@@ -4640,6 +4650,9 @@ function applyQuoteData(data) {
     if (id === 'ceilingGrid') { el.value = String(fields[id]).replace(/×/g,'x').replace(/×/g,'x'); return; }
     el.value = fields[id];
   });
+  // Restore VAT toggle (default ON for older quotes saved before this field existed)
+  var _veEl = document.getElementById('vatEnabled');
+  if (_veEl) _veEl.checked = (data.vatEnabled !== false);
   // Restore additional items
   additionalItems = data.additionalItems ? JSON.parse(JSON.stringify(data.additionalItems)) : [];
   hseExtraItems = data.hseExtraItems ? JSON.parse(JSON.stringify(data.hseExtraItems)) : [];
