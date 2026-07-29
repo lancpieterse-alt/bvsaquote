@@ -714,6 +714,27 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
                   <label>Number of Installation Days</label>
                   <input type="number" id="installDays" value="1" min="1" oninput="drecalc()">
                 </div>
+                <div class="form-group" id="installSupervisorRateGroup" style="display:none">
+                  <label>Supervisor / Day Rate (R)</label>
+                  <div class="input-group">
+                    <span class="input-prefix">R</span>
+                    <input type="number" id="supervisorRate" value="0" min="0" oninput="drecalc();updateInstallAlert()">
+                  </div>
+                </div>
+                <div class="form-group" id="installSupervisorMarginGroup" style="display:none">
+                  <label>Supervisor Margin</label>
+                  <div class="input-group">
+                    <input type="number" id="supervisorMargin" value="37.5" min="0" max="60" step="0.5" oninput="drecalc()">
+                    <span class="input-suffix">%</span>
+                  </div>
+                </div>
+                <div class="form-group" id="installSupervisorTotalGroup" style="display:none">
+                  <label>Supervisor Total (excl. VAT)</label>
+                  <div class="input-group">
+                    <span class="input-prefix">R</span>
+                    <input type="text" id="supervisorTotalDisplay" value="0.00" readonly style="background:#eef2f8;font-weight:700">
+                  </div>
+                </div>
               </div>
               <div class="alert-box" id="installPriceAlert" style="margin-top:10px">⚠️ Installation is selected but the cost is <strong>R0</strong> — please enter a price before printing or saving.</div>
             </div>
@@ -2042,7 +2063,7 @@ function sv(id,val){var e=document.getElementById(id);if(e)e.value=val;}
 // VAT toggle — checked = charge 15% VAT (SA); unchecked = cross-border/export, no VAT.
 // Defaults to ON when the element is missing (older quotes that predate the toggle).
 function _vatOn(){ var e=document.getElementById('vatEnabled'); return e ? e.checked : true; }
-function clearInstallation(){sv('bergvikInstalls','None');onInstallChange();sv('installCostPerM2','235');sv('installMargin','37.5');sv('installDayRate','0');sv('installDays','1');recalc();}
+function clearInstallation(){sv('bergvikInstalls','None');onInstallChange();sv('installCostPerM2','235');sv('installMargin','37.5');sv('installDayRate','0');sv('installDays','1');sv('supervisorRate','0');sv('supervisorMargin','37.5');recalc();}
 function clearHSE(){sv('hseReq','None');onHSEChange();sv('hseMargin','0');sv('hseCost','');sv('inductionRequired','No');onInductionChange();sv('inductionDays','1');sv('inductionCost','0');hseExtraItems.length=0;renderHSEItems();recalc();}
 function clearDeployment(){sv('deployments','');recalc();}
 function clearInstallerTransport(){sv('travelMode','');onTravelModeChange();sv('flightCostPerDeploy','0');sv('flightMargin','15');sv('distanceOneWay','0');sv('drivingMargin','15');sv('accomPPN','300');sv('foodPPD','150');sv('numberOfNights','0');sv('livingMargin','15');recalc();}
@@ -2295,12 +2316,16 @@ function onInstallChange() {
   const hasInstall = val!=='None';
   const isM2      = val==='m2';
   const isDayRate = val==='dayrate';
+  const isSupervisor = val==='Supervisor';
   const mobActive = _hasAnyInstall();
   show('installDetails', hasInstall);
   show('installM2Group', isM2);
   show('installM2MarginGroup', isM2);
   show('installDayRateGroup', isDayRate);
   show('installDaysGroup', isDayRate);
+  show('installSupervisorRateGroup', isSupervisor);
+  show('installSupervisorMarginGroup', isSupervisor);
+  show('installSupervisorTotalGroup', isSupervisor);
   show('hseSection', mobActive);
   show('deploymentSection', mobActive);
   show('transportSection', mobActive);
@@ -2332,6 +2357,8 @@ function getInstallationWarnings() {
       warns.push('"Cost per m²" selected but install cost per m² is R0');
     if (inst === 'dayrate' && !(n('installDayRate') > 0))
       warns.push('"Day Rate" selected but day rate is R0');
+    if (inst === 'Supervisor' && !(n('supervisorRate') > 0))
+      warns.push('"Supervisor Inspection" selected but supervisor rate is R0');
   }
   return warns;
 }
@@ -2344,6 +2371,7 @@ function updateInstallAlert() {
     var inst = v('bergvikInstalls');
     if (inst === 'm2' && !(n('installCostPerM2') > 0)) alertShow = true;
     if (inst === 'dayrate' && !(n('installDayRate') > 0)) alertShow = true;
+    if (inst === 'Supervisor' && !(n('supervisorRate') > 0)) alertShow = true;
   }
   el.classList.toggle('show', alertShow);
 }
@@ -2807,6 +2835,12 @@ function recalc() {
       installCost=dr*days;
       installSell=Math.round(sp(installCost,instMargin));
       installItems.push({desc:`Installation — Day Rate (${days} day${days>1?'s':''})`, qty:days, unit:'days', costPP:dr, salePP:sp(dr,instMargin), totSell:installSell, totCost:installCost});
+    } else if (bergvikInstalls==='Supervisor') {
+      const sr=n('supervisorRate'), sm=n('supervisorMargin')/100;
+      installCost=sr;
+      installSell=Math.round(sp(sr,sm));
+      if (sr>0) installItems.push({desc:'Installation — Supervisor Inspection', qty:1, unit:'sum', costPP:sr, salePP:sp(sr,sm), totSell:installSell, totCost:installCost});
+      const _std=document.getElementById('supervisorTotalDisplay'); if(_std) _std.value = installSell.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
     }
     // Add steps/ramp to install section (single-area mode)
     for (const it of stepsRampItems) installItems.push(it);
@@ -4223,7 +4257,7 @@ const FORM_FIELD_IDS = [
   'skirtingIncluded','stepsRamp','stepsRisers','stepsWidth','rampArea',
   'ceilingArea','ceilingGrid','ceilingVoid','nonZincBolts','panelsRequired',
   'materialMargin','materialContingency','discount','discountReason','quoteCurrency','forexRate','forexRateDate','vatTreatment',
-  'bergvikInstalls','installCostPerM2','installMargin','installDayRate','installDays',
+  'bergvikInstalls','installCostPerM2','installMargin','installDayRate','installDays','supervisorRate','supervisorMargin',
   'hseReq','hseCost','hseMargin','inductionRequired','inductionDays','inductionCost',
   'travelMode','deployments','teamSize',
   'flightCostPerDeploy','flightMargin',
@@ -4659,8 +4693,9 @@ function applyQuoteData(data) {
   renderHSEItems();
   // Restore ceiling panels
   if (data.ceilingPanels && data.ceilingPanels.length) ceilingPanels = JSON.parse(JSON.stringify(data.ceilingPanels));
-  // Restore quote comments
+  // Restore quote comments (and re-render the on-screen notes list, else saved notes appear blank on load)
   if (typeof quoteComments !== 'undefined' && data.quoteComments) quoteComments = JSON.parse(JSON.stringify(data.quoteComments));
+  if (typeof renderComments === 'function') renderComments();
   // Restore BOM overrides
   if (data.materialOverrides) materialOverrides = JSON.parse(JSON.stringify(data.materialOverrides));
   // Restore extra rooms, migrating any old product type values in room cards
@@ -7273,6 +7308,11 @@ function recalcCeiling(isXL) {
       var dr=n('installDayRate'), days=n('installDays')||1;
       var ic2=dr*days*deployments, is2=Math.round(sp(ic2,instMargin));
       if (dr>0) { installItems.push({desc:'Installation — Day Rate ('+days+'d × '+deployments+' deploy.)', qty:days*deployments, unit:'days', costPP:dr, salePP:sp(dr,instMargin), totSell:is2, totCost:ic2}); installSell+=is2; installCost+=ic2; }
+    } else if (bergvikInstalls === 'Supervisor') {
+      var sr=n('supervisorRate'), sm=n('supervisorMargin')/100;
+      var isv=Math.round(sp(sr,sm));
+      if (sr>0) { installItems.push({desc:'Installation — Supervisor Inspection', qty:1, unit:'sum', costPP:sr, salePP:sp(sr,sm), totSell:isv, totCost:sr}); installSell+=isv; installCost+=sr; }
+      var _std2=document.getElementById('supervisorTotalDisplay'); if(_std2) _std2.value = isv.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
     }
     // Induction
     var indReq=v('inductionRequired');
