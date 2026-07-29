@@ -714,12 +714,23 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
                   <label>Number of Installation Days</label>
                   <input type="number" id="installDays" value="1" min="1" oninput="drecalc()">
                 </div>
+                <div class="form-group" id="installDayRateTotalGroup" style="display:none">
+                  <label>Installation Total (excl. VAT)</label>
+                  <div class="input-group">
+                    <span class="input-prefix">R</span>
+                    <input type="text" id="dayRateTotalDisplay" value="0.00" readonly style="background:#eef2f8;font-weight:700">
+                  </div>
+                </div>
                 <div class="form-group" id="installSupervisorRateGroup" style="display:none">
                   <label>Supervisor / Day Rate (R)</label>
                   <div class="input-group">
                     <span class="input-prefix">R</span>
                     <input type="number" id="supervisorRate" value="0" min="0" oninput="drecalc();updateInstallAlert()">
                   </div>
+                </div>
+                <div class="form-group" id="installSupervisorDaysGroup" style="display:none">
+                  <label>Number of Inspection Days</label>
+                  <input type="number" id="supervisorDays" value="1" min="1" oninput="drecalc()">
                 </div>
                 <div class="form-group" id="installSupervisorMarginGroup" style="display:none">
                   <label>Supervisor Margin</label>
@@ -884,7 +895,7 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
                 <div class="form-group">
                   <label>Food Allowance (per person/day)</label>
                   <div class="input-group"><span class="input-prefix">R</span>
-                    <input type="number" id="foodPPD" value="150" min="0" oninput="drecalc()">
+                    <input type="number" id="foodPPD" value="0" min="0" oninput="drecalc()">
                   </div>
                 </div>
                 <div class="form-group">
@@ -2063,10 +2074,10 @@ function sv(id,val){var e=document.getElementById(id);if(e)e.value=val;}
 // VAT toggle — checked = charge 15% VAT (SA); unchecked = cross-border/export, no VAT.
 // Defaults to ON when the element is missing (older quotes that predate the toggle).
 function _vatOn(){ var e=document.getElementById('vatEnabled'); return e ? e.checked : true; }
-function clearInstallation(){sv('bergvikInstalls','None');onInstallChange();sv('installCostPerM2','235');sv('installMargin','37.5');sv('installDayRate','0');sv('installDays','1');sv('supervisorRate','0');sv('supervisorMargin','37.5');recalc();}
+function clearInstallation(){sv('bergvikInstalls','None');onInstallChange();sv('installCostPerM2','235');sv('installMargin','37.5');sv('installDayRate','0');sv('installDays','1');sv('supervisorRate','0');sv('supervisorDays','1');sv('supervisorMargin','37.5');recalc();}
 function clearHSE(){sv('hseReq','None');onHSEChange();sv('hseMargin','0');sv('hseCost','');sv('inductionRequired','No');onInductionChange();sv('inductionDays','1');sv('inductionCost','0');hseExtraItems.length=0;renderHSEItems();recalc();}
 function clearDeployment(){sv('deployments','');recalc();}
-function clearInstallerTransport(){sv('travelMode','');onTravelModeChange();sv('flightCostPerDeploy','0');sv('flightMargin','15');sv('distanceOneWay','0');sv('drivingMargin','15');sv('accomPPN','300');sv('foodPPD','150');sv('numberOfNights','0');sv('livingMargin','15');recalc();}
+function clearInstallerTransport(){sv('travelMode','');onTravelModeChange();sv('flightCostPerDeploy','0');sv('flightMargin','15');sv('distanceOneWay','0');sv('drivingMargin','15');sv('accomPPN','300');sv('foodPPD','0');sv('numberOfNights','0');sv('livingMargin','15');recalc();}
 function clearPaymentTerms(){sv('paymentTerms','Upfront payment');var e=document.getElementById('specialNotes');if(e)e.value='';recalc();}
 function clearAPG(){sv('apgReq','No');onApgChange();recalc();}
 function clearProjectClarification(){var e=document.getElementById('projectClarification');if(e)e.value='';}
@@ -2320,10 +2331,12 @@ function onInstallChange() {
   const mobActive = _hasAnyInstall();
   show('installDetails', hasInstall);
   show('installM2Group', isM2);
-  show('installM2MarginGroup', isM2);
+  show('installM2MarginGroup', isM2 || isDayRate);
   show('installDayRateGroup', isDayRate);
   show('installDaysGroup', isDayRate);
+  show('installDayRateTotalGroup', isDayRate);
   show('installSupervisorRateGroup', isSupervisor);
+  show('installSupervisorDaysGroup', isSupervisor);
   show('installSupervisorMarginGroup', isSupervisor);
   show('installSupervisorTotalGroup', isSupervisor);
   show('hseSection', mobActive);
@@ -2499,7 +2512,10 @@ function recalc() {
     });
     if (_isCompact && (_loadEl.value==='25kN'||_loadEl.value==='30kN')) _loadEl.value='';
   }
-  const area      = n('floorArea');
+  // In Multiple (multi-area) mode all areas live in the room cards; the global Area 1
+  // floorArea must not count — force it to 0 so a hidden leftover value can't inflate
+  // total area (which would drag Rate per m² down).
+  const area      = (v('productType')==='Multiple') ? 0 : n('floorArea');
   const loading   = v('loading');
   const lIdx      = LOADING_IDX[loading];
   // In Multiple mode, ready = true when at least one area has data; main floorArea is always 0
@@ -2566,7 +2582,7 @@ function recalc() {
       {key:'selfDrillingScrew', desc:'Self-Drilling Screws',                  unit:'each', qty:screwCount},
       {key:'nailPlugFloor',     desc:'Nail Plugs 6×40mm',               unit:'each', qty:nailCount},
       {key:'woodenScrew',       desc:'Wooden Screws',                    unit:'each', qty:Math.ceil(area * 3)},
-      {key:'tileCrossKeeper',   desc:'Tile Cross-Keepers',               unit:'each', qty:Math.ceil((area/50)*(BOM_QTY_PER_50.floorPanel[lIdx]||142))},
+      {key:'tileCrossKeeper',   desc:'Tile Cross-Keepers',               unit:'each', qty:Math.ceil(area*0.65)},
       {key:'foamTape',          desc:'Foam Tape 25×6mm — 10m',     unit:'roll',  qty:Math.ceil((area/50)*(BOM_QTY_PER_50.foamTape[lIdx]||3))},
       {key:'edgeTape',          desc:'Aluminium Edge Tape 48mm — 50m',  unit:'roll',  qty:Math.ceil((area/50)*(BOM_QTY_PER_50.edgeTape[lIdx]||1))},
       {key:'floorPanelLifter',  desc:'Double Floor Panel Lifter',             unit:'each', qty:Math.ceil((area/50)*(BOM_QTY_PER_50.floorPanelLifter[lIdx]||1))},
@@ -2626,7 +2642,7 @@ function recalc() {
     const _extraFloorRows = [
       {key:'woodenScrew',     desc:'Wooden Screws',     unit:'each', qty:area * 3},
       {key:'nailPlugFloor',   desc:'Nail Plugs 6×40mm', unit:'each', qty:scale * ((BOM_QTY_PER_50.pedestalHead||[])[lIdx]||50) * 2},
-      {key:'tileCrossKeeper', desc:'Tile Cross-Keepers', unit:'each', qty:scale * ((BOM_QTY_PER_50.floorPanel||[])[lIdx]||142)},
+      {key:'tileCrossKeeper', desc:'Tile Cross-Keepers', unit:'each', qty:Math.ceil(area*0.65)},
     ];
     for (const _efr of _extraFloorRows) {
       const _ov = materialOverrides[_efr.key]||{};
@@ -2835,11 +2851,12 @@ function recalc() {
       installCost=dr*days;
       installSell=Math.round(sp(installCost,instMargin));
       installItems.push({desc:`Installation — Day Rate (${days} day${days>1?'s':''})`, qty:days, unit:'days', costPP:dr, salePP:sp(dr,instMargin), totSell:installSell, totCost:installCost});
+      const _drt=document.getElementById('dayRateTotalDisplay'); if(_drt) _drt.value = installSell.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
     } else if (bergvikInstalls==='Supervisor') {
-      const sr=n('supervisorRate'), sm=n('supervisorMargin')/100;
-      installCost=sr;
-      installSell=Math.round(sp(sr,sm));
-      if (sr>0) installItems.push({desc:'Installation — Supervisor Inspection', qty:1, unit:'sum', costPP:sr, salePP:sp(sr,sm), totSell:installSell, totCost:installCost});
+      const sr=n('supervisorRate'), sdays=n('supervisorDays')||1, sm=n('supervisorMargin')/100;
+      installCost=sr*sdays;
+      installSell=Math.round(sp(installCost,sm));
+      if (sr>0) installItems.push({desc:`Installation — Supervisor Inspection (${sdays} day${sdays>1?'s':''})`, qty:sdays, unit:'days', costPP:sr, salePP:sp(sr,sm), totSell:installSell, totCost:installCost});
       const _std=document.getElementById('supervisorTotalDisplay'); if(_std) _std.value = installSell.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
     }
     // Add steps/ramp to install section (single-area mode)
@@ -2926,7 +2943,7 @@ function recalc() {
   if (installActive) {
     const nights=n('numberOfNights'), lm=n('livingMargin')/100;
     const accomT=teamSize*nights*(n('accomPPN')||300)*deployments;
-    const foodT =teamSize*nights*(n('foodPPD')||150)*deployments;
+    const foodT =teamSize*nights*n('foodPPD')*deployments;
     livingCost=accomT+foodT;
     if (accomT>0) { const s=Math.round(sp(accomT,lm)); livingSell+=s; livingItems.push({desc:`Accommodation (${teamSize}p × ${nights}n × ${deployments}d)`, qty:1, unit:'sum', costPP:accomT, salePP:s, totSell:s, totCost:accomT}); }
     if (foodT>0)  { const s=Math.round(sp(foodT,lm));  livingSell+=s; livingItems.push({desc:`Food Allowance (${teamSize}p × ${nights}d × ${deployments}d)`, qty:1, unit:'sum', costPP:foodT, salePP:s, totSell:s, totCost:foodT}); }
@@ -4257,7 +4274,7 @@ const FORM_FIELD_IDS = [
   'skirtingIncluded','stepsRamp','stepsRisers','stepsWidth','rampArea',
   'ceilingArea','ceilingGrid','ceilingVoid','nonZincBolts','panelsRequired',
   'materialMargin','materialContingency','discount','discountReason','quoteCurrency','forexRate','forexRateDate','vatTreatment',
-  'bergvikInstalls','installCostPerM2','installMargin','installDayRate','installDays','supervisorRate','supervisorMargin',
+  'bergvikInstalls','installCostPerM2','installMargin','installDayRate','installDays','supervisorRate','supervisorDays','supervisorMargin',
   'hseReq','hseCost','hseMargin','inductionRequired','inductionDays','inductionCost',
   'travelMode','deployments','teamSize',
   'flightCostPerDeploy','flightMargin',
@@ -7241,12 +7258,14 @@ function recalcCeiling(isXL) {
     rows.forEach(function(row) {
       var baseQty = (IFG_QTY_TABLE[row.key]||[])[colIdx];
       if (!baseQty || baseQty === 0) return;
-      var qty = Math.ceil((baseQty / baseMp) * area * 1.025 * (1 + contPct));
-      var costPP = costs[row.key] || 0;
-      var salePP = sp(costPP, matMargin);
+      var _ov = materialOverrides[row.key] || {};
+      var qty = (_ov.qty !== undefined && !isNaN(_ov.qty)) ? _ov.qty : Math.ceil((baseQty / baseMp) * area * 1.025 * (1 + contPct));
+      var costPP = (_ov.cost !== undefined && !isNaN(_ov.cost)) ? _ov.cost : (costs[row.key] || 0);
+      var _mg = (_ov.margin !== undefined && !isNaN(_ov.margin)) ? _ov.margin/100 : matMargin;
+      var salePP = sp(costPP, _mg);
       var totSell = Math.round(qty * salePP * (1 - discPct));
       var totCost = qty * costPP;
-      items.push({key:row.key, desc:row.desc, pn:row.pn, qty:qty, unit:'each', costPP:costPP, salePP:salePP, totSell:totSell, totCost:totCost, marginPct:(matMargin*100)});
+      items.push({key:row.key, desc:row.desc, pn:row.pn, qty:qty, unit:'each', costPP:costPP, salePP:salePP, totSell:totSell, totCost:totCost, marginPct:(_mg*100)});
       totalMatCost += totCost;
       totalMatSell += totSell;
     });
@@ -7254,12 +7273,15 @@ function recalcCeiling(isXL) {
     // Threaded rod — cost depends on void height
     var rodQtyBase = (IFG_QTY_TABLE['threadedRod']||[])[colIdx];
     if (rodQtyBase > 0 && voidH > 0) {
-      var rodQty = Math.ceil((rodQtyBase / baseMp) * area * 1.025 * (1 + contPct));
-      var rodSell = sp(rodCostPerUnit, matMargin);
+      var _rov = materialOverrides['threadedRod'] || {};
+      var rodQty = (_rov.qty !== undefined && !isNaN(_rov.qty)) ? _rov.qty : Math.ceil((rodQtyBase / baseMp) * area * 1.025 * (1 + contPct));
+      var rodCostEff = (_rov.cost !== undefined && !isNaN(_rov.cost)) ? _rov.cost : rodCostPerUnit;
+      var rodMgEff = (_rov.margin !== undefined && !isNaN(_rov.margin)) ? _rov.margin/100 : matMargin;
+      var rodSell = sp(rodCostEff, rodMgEff);
       var rodTotSell = Math.round(rodQty * rodSell * (1 - discPct));
-      var rodTotCost = rodQty * rodCostPerUnit;
+      var rodTotCost = rodQty * rodCostEff;
       items.push({key:'threadedRod', desc:'M8 Threaded Rod (per install length based on CVH)', pn:'CEI012',
-        qty:rodQty, unit:'each', costPP:rodCostPerUnit, salePP:rodSell, totSell:rodTotSell, totCost:rodTotCost, marginPct:(matMargin*100)});
+        qty:rodQty, unit:'each', costPP:rodCostEff, salePP:rodSell, totSell:rodTotSell, totCost:rodTotCost, marginPct:(rodMgEff*100)});
       totalMatCost += rodTotCost;
       totalMatSell += rodTotSell;
     }
@@ -7308,10 +7330,11 @@ function recalcCeiling(isXL) {
       var dr=n('installDayRate'), days=n('installDays')||1;
       var ic2=dr*days*deployments, is2=Math.round(sp(ic2,instMargin));
       if (dr>0) { installItems.push({desc:'Installation — Day Rate ('+days+'d × '+deployments+' deploy.)', qty:days*deployments, unit:'days', costPP:dr, salePP:sp(dr,instMargin), totSell:is2, totCost:ic2}); installSell+=is2; installCost+=ic2; }
+      var _drt2=document.getElementById('dayRateTotalDisplay'); if(_drt2) _drt2.value = is2.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
     } else if (bergvikInstalls === 'Supervisor') {
-      var sr=n('supervisorRate'), sm=n('supervisorMargin')/100;
-      var isv=Math.round(sp(sr,sm));
-      if (sr>0) { installItems.push({desc:'Installation — Supervisor Inspection', qty:1, unit:'sum', costPP:sr, salePP:sp(sr,sm), totSell:isv, totCost:sr}); installSell+=isv; installCost+=sr; }
+      var sr=n('supervisorRate'), ssdays=n('supervisorDays')||1, sm=n('supervisorMargin')/100;
+      var scost=sr*ssdays, isv=Math.round(sp(scost,sm));
+      if (sr>0) { installItems.push({desc:'Installation — Supervisor Inspection ('+ssdays+'d)', qty:ssdays, unit:'days', costPP:sr, salePP:sp(sr,sm), totSell:isv, totCost:scost}); installSell+=isv; installCost+=scost; }
       var _std2=document.getElementById('supervisorTotalDisplay'); if(_std2) _std2.value = isv.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
     }
     // Induction
@@ -7372,7 +7395,7 @@ function recalcCeiling(isXL) {
   if (bergvikInstalls !== 'None') {
     var nights=n('numberOfNights'), lm=n('livingMargin')/100;
     var accomT=teamSize*nights*(n('accomPPN')||300)*deployments;
-    var foodT =teamSize*nights*(n('foodPPD')||150)*deployments;
+    var foodT =teamSize*nights*n('foodPPD')*deployments;
     livingCost=accomT+foodT;
     if (accomT>0) { var s=Math.round(sp(accomT,lm)); livingSell+=s; livingItems.push({desc:'Accommodation ('+teamSize+'p × '+nights+'n × '+deployments+'d)', qty:1, unit:'sum', costPP:accomT, salePP:s, totSell:s, totCost:accomT}); }
     if (foodT>0)  { var s2=Math.round(sp(foodT,lm));  livingSell+=s2; livingItems.push({desc:'Food Allowance ('+teamSize+'p × '+nights+'d)', qty:1, unit:'sum', costPP:foodT, salePP:s2, totSell:s2, totCost:foodT}); }
