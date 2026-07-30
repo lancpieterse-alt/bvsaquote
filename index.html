@@ -7399,6 +7399,10 @@ function recalcCeiling(isXL) {
     livingCost=accomT+foodT;
     if (accomT>0) { var s=Math.round(sp(accomT,lm)); livingSell+=s; livingItems.push({desc:'Accommodation ('+teamSize+'p × '+nights+'n × '+deployments+'d)', qty:1, unit:'sum', costPP:accomT, salePP:s, totSell:s, totCost:accomT}); }
     if (foodT>0)  { var s2=Math.round(sp(foodT,lm));  livingSell+=s2; livingItems.push({desc:'Food Allowance ('+teamSize+'p × '+nights+'d)', qty:1, unit:'sum', costPP:foodT, salePP:s2, totSell:s2, totCost:foodT}); }
+    if (v('localIntl')==='International') {
+      var vt=n('visaCostPP')*teamSize;
+      if (vt>0) { var vs=Math.round(sp(vt,lm)); livingSell+=vs; livingCost+=vt; livingItems.push({desc:'Visa/Work Permits ('+teamSize+' people)', qty:teamSize, unit:'p/p', costPP:n('visaCostPP'), salePP:sp(n('visaCostPP'),lm), totSell:vs, totCost:vt}); }
+    }
   }
 
   // ── FREIGHT ───────────────────────────────────────────────────────────────
