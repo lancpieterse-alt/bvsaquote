@@ -1397,6 +1397,90 @@ tr.pl-upcoming td:first-child{border-left:3px solid #f59e0b;}
     </div>
   </div>
 
+<!-- EXTERNAL PIPELINE UPDATE PAGE (opened via ?log=<id>&tok=<token> link) -->
+<div id="externalLogPage" style="display:none;position:fixed;inset:0;z-index:99999;background:#f1f5f9;overflow-y:auto">
+  <div style="max-width:640px;margin:0 auto;padding:16px">
+    <div style="background:var(--brand,#1a3a5c);color:#fff;border-radius:10px;padding:16px 18px;margin-bottom:14px">
+      <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.6px">Bergvik SA · Pipeline Update</div>
+      <div id="extLogTitle" style="font-size:20px;font-weight:700;margin-top:4px">—</div>
+      <div id="extLogSubtitle" style="font-size:13px;opacity:.9;margin-top:3px"></div>
+    </div>
+    <div id="extLogContent">
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--brand,#1a3a5c);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Log an Update</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label>Your Name</label>
+            <input id="ext_rep" type="text" placeholder="Your name">
+          </div>
+          <div class="form-group">
+            <label>Action Taken</label>
+            <select id="ext_action">
+              <option value="">— Select —</option>
+              <option>Follow up Call</option>
+              <option>Meeting</option>
+              <option>Revise Price</option>
+              <option>Email Sent</option>
+              <option>Quote Submitted</option>
+              <option>Quote Closed</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Outcome</label>
+            <select id="ext_outcome">
+              <option value="">— Select —</option>
+              <option>Spoke to Client</option>
+              <option>No Answer</option>
+              <option>Meeting Scheduled</option>
+              <option>Revised Quote Sent</option>
+              <option>PO Received</option>
+              <option>Not Awarded</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Update Stage</label>
+            <select id="ext_stage">
+              <option value="">— No change —</option>
+              <option>Quoting</option>
+              <option>Active / Pending</option>
+              <option>Won (PO Issued)</option>
+              <option>Not Awarded</option>
+              <option>Lost</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Next Action</label>
+            <select id="ext_nextAction">
+              <option value="">— No change —</option>
+              <option>None</option>
+              <option>Follow up Call</option>
+              <option>Meeting</option>
+              <option>Revise Price</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Next Action Date</label>
+            <input id="ext_nextActionDate" type="date">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Notes</label>
+            <textarea id="ext_notes" style="min-height:64px" placeholder="What was discussed, what was agreed…"></textarea>
+          </div>
+        </div>
+        <div style="text-align:right;margin-top:10px">
+          <button id="extSubmitBtn" onclick="submitExternalLog()" style="background:var(--brand,#1a3a5c);color:#fff;border:none;border-radius:6px;padding:10px 22px;cursor:pointer;font-weight:600;font-size:14px">Save Entry</button>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px">
+        <div style="font-size:11px;font-weight:700;color:var(--brand,#1a3a5c);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Activity History</div>
+        <div id="extLogHistory" style="max-height:320px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- SUMMARY PANEL -->
 <div class="summary-panel">
   <div class="card" style="margin-bottom:16px">
